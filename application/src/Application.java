@@ -41,7 +41,7 @@ public class Application implements Runnable {
     }
 
     public ArrayList<Player_characters> readingCSVFile(){
-        CsvReader reader = new CsvReader("resources/character.csv");
+        CsvReader reader = new CsvReader("application/src/character.csv");
         reader.skipRow();
         reader.setSeparator(',');
 
