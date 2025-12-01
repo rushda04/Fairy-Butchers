@@ -18,6 +18,8 @@ public class Application implements GameLoop {
     BufferedImage playerScaled;
     BufferedImage playButtonScaled;
     BufferedImage playButtonHoverScaled;
+    BufferedImage tutorialButtonScaled;
+    BufferedImage tutorialButtonHoverScaled;
 
 
 
@@ -25,8 +27,11 @@ public class Application implements GameLoop {
     String playerScaledPath = "resources/player_scaled.png";
     String playButtonScaledPath = "resources/playButton_scaled.png";
     String playButtonHoverScaledPath = "resources/playButton_hover_scaled.png";
+    String tutorialButtonScaledPath = "resources/tutorialButton_scaled.png";
+    String tutorialButtonHoverScaledPath = "resources/tutorialButton_hover_scaled.png";
 
     boolean hoveringPlayButton = false;
+    boolean hoveringTutorialButton = false;
 
 
 
@@ -39,6 +44,15 @@ public class Application implements GameLoop {
     int playButtonY = 550;
     int playButtonWidth = 0;
     int playButtonHeight = 0;
+
+
+    int tutorialButtonHoverWidth = 0;
+    int tutorialButtonHoverHeight = 0;
+
+    int tutorialButtonX = 810;
+    int tutorialButtonY = 440;
+    int tutorialButtonWidth = 0;
+    int tutorialButtonHeight = 0;
 
     boolean inIntro = true;
 
@@ -75,11 +89,17 @@ public class Application implements GameLoop {
         int mx = e.getX();
         int my = e.getY();
 
+        //when the mouse is exactly at the playbutton X, Y, width and height,
+        //the image will shrink and do it's function
         hoveringPlayButton = (mx >= playButtonX && mx <= playButtonX + playButtonWidth &&
                 my >= playButtonY && my <= playButtonY + playButtonHeight);
 
+        hoveringTutorialButton = (mx >= tutorialButtonX && mx <= tutorialButtonY + tutorialButtonWidth
+                && my >= tutorialButtonY && my <= tutorialButtonY + tutorialButtonHeight);
+
+
         if (inIntro && e.isMouseUp() && e.isLeftMouseButton()) {
-            if (hoveringPlayButton) {
+            if (hoveringPlayButton || hoveringTutorialButton) {
                 inIntro = false;
                 SaxionApp.printLine("Play button clicked at: " + mx + "," + my);
             }
@@ -137,6 +157,8 @@ public class Application implements GameLoop {
         playerScaled = loadSprite("resources/quake E.png", playerScaledPath, 10);
         playButtonScaled = loadSprite("resources/playButton.png", playButtonScaledPath, 8);
         playButtonHoverScaled = loadSprite("resources/playButton.png", playButtonHoverScaledPath, 6);
+        tutorialButtonScaled = loadSprite("resources/tutorialButton.png", tutorialButtonScaledPath, 8);
+        tutorialButtonHoverScaled = loadSprite("resources/tutorialButton.png", tutorialButtonHoverScaledPath, 6);
 
         if (playButtonScaled != null) {
             playButtonWidth = playButtonScaled.getWidth();
@@ -152,6 +174,22 @@ public class Application implements GameLoop {
         } else {
             playButtonHoverWidth = playButtonWidth;
             playButtonHoverHeight = playButtonHeight;
+        }
+
+        if (tutorialButtonScaled != null) {
+            tutorialButtonWidth = tutorialButtonScaled.getWidth();
+            tutorialButtonHeight = tutorialButtonScaled.getHeight();
+        } else {
+            tutorialButtonWidth = 200;
+            tutorialButtonHeight = 80;
+        }
+
+        if (tutorialButtonHoverScaled != null) {
+            tutorialButtonHoverWidth = tutorialButtonHoverScaled.getWidth();
+            tutorialButtonHoverHeight = tutorialButtonHoverScaled.getHeight();
+        } else {
+            tutorialButtonHoverWidth = playButtonWidth;
+            tutorialButtonHoverHeight = playButtonHeight;
         }
     }
 
@@ -221,14 +259,28 @@ public class Application implements GameLoop {
     }
 
     public void introHud() {
+
         if (hoveringPlayButton && playButtonHoverScaled != null) {
-            int hx = playButtonX - (playButtonHoverWidth - playButtonWidth) / 2;
-            int hy = playButtonY - (playButtonHoverHeight - playButtonHeight) / 2;
-            SaxionApp.drawImage(playButtonHoverScaledPath, hx, hy);
+            int hoverX = playButtonX - (playButtonHoverWidth - playButtonWidth) / 2;
+            int hoverY = playButtonY - (playButtonHoverHeight - playButtonHeight) / 2;
+            SaxionApp.drawImage(playButtonHoverScaledPath, hoverX, hoverY);
         } else {
             SaxionApp.drawImage(playButtonScaledPath, playButtonX, playButtonY);
         }
+
+        if(hoveringTutorialButton && tutorialButtonHoverScaled != null) {
+            int tutorialHoverX = tutorialButtonX - (tutorialButtonHoverWidth - tutorialButtonWidth) / 2;
+            int tutorialHoverY = tutorialButtonY - (tutorialButtonHoverHeight - tutorialButtonHeight) / 2;
+            SaxionApp.drawImage(tutorialButtonHoverScaledPath, tutorialHoverX, tutorialHoverY);
+
+        } else {
+            SaxionApp.drawImage(tutorialButtonScaledPath, tutorialButtonX, tutorialButtonY);
+        }
+
+
     }
+
+
 
 
 }
