@@ -1,5 +1,10 @@
 public class Ability {
-    int dmg;
-    int manaCost;
-    String effect;
+    public int dmg;
+    public int manaCost;
+
+    public Ability()
+    {
+
+    }
+
 }

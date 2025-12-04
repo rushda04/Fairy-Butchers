@@ -13,6 +13,15 @@ import java.util.ArrayList;
 public class Application implements GameLoop {
 
     ArrayList<Player_characters> characters = readingCSVFile();
+    ArrayList<Fairy> fairies = new ArrayList<>();
+
+    enum turn {
+        Player,
+        Fairy
+    }
+
+    turn currentTurn = turn.Player;
+
 
     BufferedImage fairyScaled;
     BufferedImage playerScaled;
@@ -20,7 +29,6 @@ public class Application implements GameLoop {
     BufferedImage playButtonHoverScaled;
     BufferedImage tutorialButtonScaled;
     BufferedImage tutorialButtonHoverScaled;
-
 
 
     String fairyScaledPath = "resources/fairy_scaled.png";
@@ -33,7 +41,8 @@ public class Application implements GameLoop {
     boolean hoveringPlayButton = false;
     boolean hoveringTutorialButton = false;
 
-
+    boolean playerTurn = true;
+    boolean actionPending = false;
 
 
     int playButtonHoverWidth = 0;
@@ -56,6 +65,12 @@ public class Application implements GameLoop {
 
     boolean inIntro = true;
 
+    int selectedCharacterIndex = 0;
+    int currentFairyIndex = 0;
+
+    Fairy currentFairy;
+    int enemyHp = 100;
+
     public static void main(String[] args) {
         System.setProperty("sun.java2d.uiScale", "1.0");
         SaxionApp.startGameLoop(new Application(), 1536, 1024, 16);
@@ -65,22 +80,37 @@ public class Application implements GameLoop {
     @Override
     public void init() {
         loadSprites();
+
+        fairies.add(new Fairy(10, 20, 100));
+        fairies.add(new Fairy(10, 20, 120));
+        fairies.add(new Fairy(10, 20, 150));
+
+        currentFairy = fairies.get(currentFairyIndex);
     }
 
     @Override
     public void loop() {
         if (inIntro) {
             drawIntro();
-        } else {
-            drawGame();
+            return;
         }
+        if (currentTurn == turn.Fairy) {
+            fairyTurn();
+            currentTurn = turn.Player;
+        }
+
+        drawGame();
+
+
     }
 
     @Override
     public void keyboardEvent(KeyboardEvent e) {
-        if (inIntro) {
-            inIntro = false;
-            SaxionApp.printLine("Started by keyboard event: " + e.getKeyCode());
+        if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_Q) {
+            if (currentTurn == turn.Player) {
+                attackEnemy();
+                currentTurn = turn.Fairy;
+            }
         }
     }
 
@@ -107,7 +137,6 @@ public class Application implements GameLoop {
     }
 
 
-
     private void drawIntro() {
         SaxionApp.clear();
         SaxionApp.drawImage("resources/fairyButchersFrontPage.png", 0, 0);
@@ -124,14 +153,14 @@ public class Application implements GameLoop {
         inGameHud();
     }
 
-    public ArrayList<Player_characters> readingCSVFile(){
+    public ArrayList<Player_characters> readingCSVFile() {
         CsvReader reader = new CsvReader("application/src/character.csv");
         reader.skipRow();
         reader.setSeparator(',');
 
         ArrayList<Player_characters> characters = new ArrayList<>();
 
-        while(reader.loadRow()) {
+        while (reader.loadRow()) {
 
             Player_characters character = new Player_characters();
             //String name;
@@ -228,33 +257,34 @@ public class Application implements GameLoop {
         SaxionApp.drawRectangle(10, 250, 60, 60);
         SaxionApp.drawRectangle(10, 320, 60, 60);
 
-        fillHealth(75);
+        Player_characters player = characters.get(selectedCharacterIndex);
+        fillHealth(player.hp);
         fillMana(75);
         fillCorruption(25);
-        fillEnemy(35);
+        fillEnemy(enemyHp);
     }
 
     public void fillHealth(int healthPoints) {
         SaxionApp.setFill(Color.red);
-        int filler = (int)((healthPoints / 100.0) * 500);
+        int filler = (int) ((healthPoints / 100.0) * 500);
         SaxionApp.drawRectangle(10, 10, filler, 10);
     }
 
     public void fillMana(int manaPoints) {
         SaxionApp.setFill(Color.blue);
-        int filler = (int)((manaPoints / 100.0) * 250);
+        int filler = (int) ((manaPoints / 100.0) * 250);
         SaxionApp.drawRectangle(10, 30, filler, 10);
     }
 
     public void fillCorruption(int corruptionLevel) {
         SaxionApp.setFill(Color.magenta);
-        int filler = (int)((corruptionLevel / 100.0) * 750);
+        int filler = (int) ((corruptionLevel / 100.0) * 750);
         SaxionApp.drawRectangle(1470, 110, 50, filler);
     }
 
     public void fillEnemy(int hp) {
         SaxionApp.setFill(Color.red);
-        int filler = (int)((hp / 100.0) * 300);
+        int filler = (int) ((hp / 100.0) * 300);
         SaxionApp.drawRectangle(950, 680, filler, 10);
     }
 
@@ -268,7 +298,7 @@ public class Application implements GameLoop {
             SaxionApp.drawImage(playButtonScaledPath, playButtonX, playButtonY);
         }
 
-        if(hoveringTutorialButton && tutorialButtonHoverScaled != null) {
+        if (hoveringTutorialButton && tutorialButtonHoverScaled != null) {
             int tutorialHoverX = tutorialButtonX - (tutorialButtonHoverWidth - tutorialButtonWidth) / 2;
             int tutorialHoverY = tutorialButtonY - (tutorialButtonHoverHeight - tutorialButtonHeight) / 2;
             SaxionApp.drawImage(tutorialButtonHoverScaledPath, tutorialHoverX, tutorialHoverY);
@@ -280,7 +310,52 @@ public class Application implements GameLoop {
 
     }
 
+    public void attackEnemy() {
+        if (characters.isEmpty()) return; //safety check
+
+        //Get the selected character
+        Player_characters character = characters.get(selectedCharacterIndex);
+
+        //Deal damage
+        enemyHp -= character.atk;
+
+        //Hp doesn't go below 0
+        if (enemyHp < 0) enemyHp = 0;
+
+    }
+
+    private void nextFairy() {
+        currentFairyIndex++;
+
+        if (currentFairyIndex >= fairies.size())
+            currentFairyIndex = 0;
+
+        currentFairy = fairies.get(currentFairyIndex);
+
+        if (currentFairyIndex > 0) {
+            currentFairy.increaseScaling();
+        }
+    }
 
 
+    public void fairyTurn() {
+        if (currentFairy == null || !currentFairy.isAlive()) return;
+
+        Player_characters player = characters.get(selectedCharacterIndex);
+
+        //random attack
+        double r = Math.random();
+        int damage;
+        if (r < 0.6) {
+            damage = currentFairy.getGroundDmg();
+        } else {
+            damage = currentFairy.getAirDmg();
+        }
+
+        player.hp -= damage;
+        if (player.hp < 0) player.hp = 0;
+
+        nextFairy();
+    }
 
 }

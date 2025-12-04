@@ -5,4 +5,6 @@ public  class Player_characters {
     static int hp;
     static int baseMana;
     Ability characterAbility;
+
+
 }
