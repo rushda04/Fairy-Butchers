@@ -64,12 +64,19 @@ public class Application implements GameLoop {
     int tutorialButtonHeight = 0;
 
     boolean inIntro = true;
+    boolean corruptionDecayedThisTurn = false;
 
     int selectedCharacterIndex = 0;
     int currentFairyIndex = 0;
 
     Fairy currentFairy;
     int enemyHp = 100;
+    int corruptionLevel = 0;
+
+    double fairyFloatOffset = 0;
+    double floatAmplitude = 10;
+    double floatSpeed = 0.05;
+    double time = 0;
 
     public static void main(String[] args) {
         System.setProperty("sun.java2d.uiScale", "1.0");
@@ -90,6 +97,7 @@ public class Application implements GameLoop {
 
     @Override
     public void loop() {
+
         if (inIntro) {
             drawIntro();
             return;
@@ -99,9 +107,13 @@ public class Application implements GameLoop {
             currentTurn = turn.Player;
         }
 
+        if (!corruptionDecayedThisTurn) {
+            decayCorruption();
+            corruptionDecayedThisTurn = true;
+        }
+
         drawGame();
-
-
+        
     }
 
     @Override
@@ -260,7 +272,7 @@ public class Application implements GameLoop {
         Player_characters player = characters.get(selectedCharacterIndex);
         fillHealth(player.hp);
         fillMana(75);
-        fillCorruption(25);
+        fillCorruption(corruptionLevel);
         fillEnemy(enemyHp);
     }
 
@@ -278,7 +290,12 @@ public class Application implements GameLoop {
 
     public void fillCorruption(int corruptionLevel) {
         SaxionApp.setFill(Color.magenta);
-        int filler = (int) ((corruptionLevel / 100.0) * 750);
+
+        // Visual bar capped at 100
+        int visibleLevel = Math.min(corruptionLevel, 100);
+        int filler = (int) ((visibleLevel / 100.0) * 750);
+
+        if (filler < 1 && corruptionLevel > 0) filler = 1; // ensure visibility
         SaxionApp.drawRectangle(1470, 110, 50, filler);
     }
 
@@ -321,7 +338,6 @@ public class Application implements GameLoop {
 
         //Hp doesn't go below 0
         if (enemyHp < 0) enemyHp = 0;
-
     }
 
     private void nextFairy() {
@@ -343,19 +359,74 @@ public class Application implements GameLoop {
 
         Player_characters player = characters.get(selectedCharacterIndex);
 
-        //random attack
-        double r = Math.random();
+        boolean shouldHeal = currentFairy.hp < currentFairy.maxHp && Math.random() < 0.3;
+
+        if(shouldHeal)
+        {
+            int healAmount = (int)(currentFairy.hp * 0.25);
+            currentFairy.hp += healAmount;
+            if(currentFairy.hp > currentFairy.maxHp) currentFairy.hp = currentFairy.maxHp;
+            nextFairy();
+            return;
+        }
+
         int damage;
-        if (r < 0.6) {
-            damage = currentFairy.getGroundDmg();
-        } else {
+        boolean criticalHit = false;
+        double playerHealthRatio = player.hp / 100.0;
+        double corruptionRatio = corruptionLevel / 100.0;
+        double fairyScaling = currentFairy.scaling;
+        double airChance = 0.4;
+
+        airChance += 0.4 * (1-playerHealthRatio);
+        airChance += 0.3 * corruptionRatio;
+
+        airChance += 0.2 * (fairyScaling - 1);
+
+        airChance = Math.min(Math.max(airChance, 0.1), 0.9);
+
+        if (Math.random() < airChance) {
             damage = currentFairy.getAirDmg();
+        } else {
+            damage = currentFairy.getGroundDmg();
+        }
+
+        double critChance = 0.1 + 0.4 * corruptionRatio;
+        if(Math.random() < critChance){
+            damage *= 2;
+            criticalHit = true;
         }
 
         player.hp -= damage;
         if (player.hp < 0) player.hp = 0;
 
+        increaseCorruptionDamage(damage);
+
         nextFairy();
+    }
+
+    public void increaseCorruptionDamage(int damage) {
+        double randomPercent = 0.10 + Math.random() * 0.05; // 10-15% of damage
+        int corruptionIncrease = (int) (randomPercent * damage);
+
+        corruptionLevel += corruptionIncrease;
+        if (corruptionLevel > 120) corruptionLevel = 120; // allow temporary overflow
+    }
+
+    public void decayCorruption() {
+        // Base decay
+        double baseDecay = 20 + Math.random() * 5; // 5-10 points
+
+        // Extra decay if corruption > 100
+        double extraDecay = 0;
+        if (corruptionLevel > 100) {
+            extraDecay = (corruptionLevel - 100) * 0.5; // half of overflow
+        }
+
+        int totalDecay = (int) (baseDecay + extraDecay);
+        if (totalDecay < 1) totalDecay = 1;
+
+        corruptionLevel -= totalDecay;
+        if (corruptionLevel < 0) corruptionLevel = 0;
     }
 
 }
