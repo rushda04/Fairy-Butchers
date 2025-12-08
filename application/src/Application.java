@@ -11,7 +11,6 @@ import java.io.File;
 import java.util.ArrayList;
 
 public class Application implements GameLoop {
-
     ArrayList<Player_characters> characters = readingCSVFile();
     ArrayList<Fairy> fairies = new ArrayList<>();
 
@@ -30,6 +29,13 @@ public class Application implements GameLoop {
     BufferedImage tutorialButtonScaled;
     BufferedImage tutorialButtonHoverScaled;
 
+    BufferedImage wallScaled;                   // NEW: scaled wall image
+    String wallScaledPath = "resources/ability_wall_scaled.png";  // NEW path
+
+
+    BufferedImage stoneScaled;
+    String stoneScaledPath = "resources/ability_stone_scaled.png";
+
 
     String fairyScaledPath = "resources/fairy_scaled.png";
     String playerScaledPath = "resources/player_scaled.png";
@@ -37,6 +43,31 @@ public class Application implements GameLoop {
     String playButtonHoverScaledPath = "resources/playButton_hover_scaled.png";
     String tutorialButtonScaledPath = "resources/tutorialButton_scaled.png";
     String tutorialButtonHoverScaledPath = "resources/tutorialButton_hover_scaled.png";
+
+    // ===== EARTH ABILITY IMAGE PATHS =====
+    String treeImgPath = "resources/ability_tree.png";          // normal attack option 1
+    String stoneImgPath = "resources/ability_stone.png";         // normal attack option 2
+    String wallImgPath = "resources/ability_wall.png";          // defence
+    String punchImgPath = "resources/ability_double_punch.png";  // ultimate
+
+    // ===== ANIMATION STATE: NORMAL ATTACK (tree / stone) =====
+    boolean treeActive = false;
+    int treeX, treeY;
+    int treeSpeedX = 18;   // tree projectile speed
+
+    boolean stoneActive = false;
+    int stoneX, stoneY;
+    int stoneSpeedX = 25;  // stone projectile speed
+
+    // ===== ANIMATION STATE: DEFENCE (wall) =====
+    boolean wallActive = false;
+    int wallFrame = 0;
+    int wallMaxFrames = 90; // how many frames wall is visible
+
+    // ===== ANIMATION STATE: ULTIMATE (double punch) =====
+    boolean punchActive = false;
+    int punchFrame = 0;
+    int punchMaxFrames = 25; // short animation
 
     boolean hoveringPlayButton = false;
     boolean hoveringTutorialButton = false;
@@ -78,6 +109,8 @@ public class Application implements GameLoop {
     double floatSpeed = 0.05;
     double time = 0;
 
+    long gameStartTime = -1;
+
     public static void main(String[] args) {
         System.setProperty("sun.java2d.uiScale", "1.0");
         SaxionApp.startGameLoop(new Application(), 1536, 1024, 16);
@@ -113,17 +146,49 @@ public class Application implements GameLoop {
         }
 
         drawGame();
-        
+
     }
 
     @Override
     public void keyboardEvent(KeyboardEvent e) {
         if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_Q) {
             if (currentTurn == turn.Player) {
+
+                // START NORMAL ATTACK ANIMATION (tree or stone)
+                startNormalAttackAnimation();
+
                 attackEnemy();
                 currentTurn = turn.Fairy;
             }
         }
+
+        // DEFENCE (E) – build wall
+        if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_E) {
+            if (currentTurn == turn.Player) {
+                startWallAbility();
+                // if you want, you can also end the turn here:
+                // currentTurn = turn.Fairy;
+            }
+        }
+
+        // ULTIMATE (R) – double punch
+        if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_R) {
+            if (currentTurn == turn.Player) {
+                // example: extra damage for ultimate
+                attackEnemy();      // hit 1
+                attackEnemy();      // hit 2
+
+                startPunchAbility(); // play punch animation
+                currentTurn = turn.Fairy;
+            }
+        }
+
+        if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_W) {
+            if (currentTurn == turn.Player) {
+                useStoneThrowAttack();
+            }
+        }
+
     }
 
     @Override
@@ -136,13 +201,15 @@ public class Application implements GameLoop {
         hoveringPlayButton = (mx >= playButtonX && mx <= playButtonX + playButtonWidth &&
                 my >= playButtonY && my <= playButtonY + playButtonHeight);
 
-        hoveringTutorialButton = (mx >= tutorialButtonX && mx <= tutorialButtonY + tutorialButtonWidth
+        hoveringTutorialButton = (mx >= tutorialButtonX && mx <= tutorialButtonX + tutorialButtonWidth
                 && my >= tutorialButtonY && my <= tutorialButtonY + tutorialButtonHeight);
 
 
         if (inIntro && e.isMouseUp() && e.isLeftMouseButton()) {
             if (hoveringPlayButton || hoveringTutorialButton) {
                 inIntro = false;
+                // TIMER: start when intro ends
+                startTimerIfNeeded();
                 SaxionApp.printLine("Play button clicked at: " + mx + "," + my);
             }
         }
@@ -161,6 +228,9 @@ public class Application implements GameLoop {
 
         SaxionApp.drawImage(fairyScaledPath, 970, 700);
         SaxionApp.drawImage(playerScaledPath, 200, 670);
+
+        // draw ability animations on top of battlefield
+        drawAllAbilities();
 
         inGameHud();
     }
@@ -200,6 +270,10 @@ public class Application implements GameLoop {
         playButtonHoverScaled = loadSprite("resources/playButton.png", playButtonHoverScaledPath, 6);
         tutorialButtonScaled = loadSprite("resources/tutorialButton.png", tutorialButtonScaledPath, 8);
         tutorialButtonHoverScaled = loadSprite("resources/tutorialButton.png", tutorialButtonHoverScaledPath, 6);
+
+        wallScaled = loadSprite("resources/ability_wall.png", wallScaledPath, 1);
+
+        stoneScaled = loadSprite("resources/ability_stone.png", stoneScaledPath, 6);
 
         if (playButtonScaled != null) {
             playButtonWidth = playButtonScaled.getWidth();
@@ -274,6 +348,39 @@ public class Application implements GameLoop {
         fillMana(75);
         fillCorruption(corruptionLevel);
         fillEnemy(enemyHp);
+
+        // TIMER: show it in the HUD
+        drawTimer();
+    }
+
+    // TIMER: start once, the first time this is called
+    private void startTimerIfNeeded() {
+        if (gameStartTime < 0) {
+            gameStartTime = System.currentTimeMillis();
+        }
+    }
+
+    // TIMER: compute elapsed time and draw it
+    private void drawTimer() {
+        // If we never started the timer, do nothing
+        if (gameStartTime < 0) return;
+
+        // Milliseconds since the timer started
+        long elapsedMillis = System.currentTimeMillis() - gameStartTime;
+
+        // Convert to seconds
+        int totalSeconds = (int) (elapsedMillis / 1000);
+
+        // Minutes and seconds
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+
+        // Format as MM:SS
+        String timeText = String.format("%02d:%02d", minutes, seconds);
+
+        // Draw the time on the screen (top-left-ish)
+        SaxionApp.setTextDrawingColor(Color.white);
+        SaxionApp.drawText("Time: " + timeText, 20, 70, 20);
     }
 
     public void fillHealth(int healthPoints) {
@@ -303,6 +410,167 @@ public class Application implements GameLoop {
         SaxionApp.setFill(Color.red);
         int filler = (int) ((hp / 100.0) * 300);
         SaxionApp.drawRectangle(950, 680, filler, 10);
+    }
+
+    // ===== HELPER: approximate centers of player and fairy sprites =====
+    private int getPlayerCenterX() {
+        return 200 + playerScaled.getWidth() / 2;
+    }
+
+    private int getPlayerCenterY() {
+        return 670 + playerScaled.getHeight() / 2;
+    }
+
+    private int getFairyCenterX() {
+        return 970 + fairyScaled.getWidth() / 2;
+    }
+
+    private int getFairyCenterY() {
+        return 700 + fairyScaled.getHeight() / 2;
+    }
+
+// ===== START ABILITY ANIMATIONS =====
+
+    // Normal attack: randomly choose between throwing tree or stone
+    private void startNormalAttackAnimation() {
+        if (Math.random() < 0.5) {
+            startTreeAbility();
+        } else {
+            startStoneAbility();
+        }
+    }
+
+    private void startTreeAbility() {
+        treeActive = true;
+        treeX = getPlayerCenterX();
+        treeY = getPlayerCenterY() - 40; // a bit above player
+    }
+
+    private void startStoneAbility() {
+        stoneActive = true;
+        stoneX = getPlayerCenterX();
+        stoneY = getPlayerCenterY() - 20;
+    }
+
+    private void useStoneThrowAttack() {
+        // 1) launch the stone projectile
+        startStoneAbility();
+
+        // 2) deal normal attack damage
+        attackEnemy();
+
+        // 3) end the player's turn
+        currentTurn = turn.Fairy;
+    }
+
+    private void startWallAbility() {
+        wallActive = true;
+        wallFrame = 0;
+    }
+
+    private void startPunchAbility() {
+        punchActive = true;
+        punchFrame = 0;
+    }
+
+    // ===== UPDATE + DRAW: THROW TREE =====
+    private void drawTreeAbility() {
+        if (!treeActive) return;
+
+        // move the tree to the right each frame
+        treeX += treeSpeedX;
+
+        // draw the pixel art of the tree
+        SaxionApp.drawImage(treeImgPath, treeX, treeY);
+
+        // stop animation once tree has passed fairy
+        if (treeX > getFairyCenterX() + 30) {
+            treeActive = false;
+        }
+    }
+
+    // ===== UPDATE + DRAW: THROW STONE =====
+    private void drawStoneAbility() {
+        if (!stoneActive) return;
+
+        stoneX += stoneSpeedX;
+        SaxionApp.drawImage(stoneScaledPath, stoneX, stoneY);
+
+        if (stoneX > getFairyCenterX() + 30) {
+            stoneActive = false;
+        }
+    }
+
+    // ===== UPDATE + DRAW: DEFENCE WALL (single wall between them) =====
+    private void drawWallAbility() {
+        if (!wallActive) return;
+
+        wallFrame++;
+
+        // 1) X position: halfway between player and fairy
+        int midX = (getPlayerCenterX() + getFairyCenterX()) / 2;
+
+        // 2) Size of the wall sprite (use scaled image if available)
+        int wallW, wallH;
+        if (wallScaled != null) {
+            wallW = wallScaled.getWidth();
+            wallH = wallScaled.getHeight();
+        } else {
+            wallW = 100;  // fallback guesses if something went wrong
+            wallH = 120;
+        }
+
+        // Center the wall horizontally at midX
+        int wallX = midX - wallW / 2;
+
+        // 3) Put the bottom of the wall on the ground where the player stands
+        //    Player is drawn at Y = 670 in drawGame()
+        int playerFeetY = 670 + playerScaled.getHeight(); // bottom of player sprite
+        int baseY = playerFeetY - wallH + 100;                  // bottom of wall on ground
+
+        // 4) Rising animation (optional) – first 20 frames it comes out of ground
+        int riseOffset = 0;
+        if (wallFrame < 20) {
+            riseOffset = (20 - wallFrame) * 3;
+        }
+
+        // 5) Draw ONE wall sprite
+        SaxionApp.drawImage(wallScaledPath, wallX, baseY + riseOffset);
+
+        // 6) After some time, remove the wall
+        if (wallFrame >= wallMaxFrames) {
+            wallActive = false;
+        }
+    }
+
+    // ===== UPDATE + DRAW: ULTIMATE DOUBLE PUNCH =====
+    private void drawPunchAbility() {
+        if (!punchActive) return;
+
+        punchFrame++;
+
+        int baseX = getPlayerCenterX();
+        int baseY = getPlayerCenterY() - 10;
+
+        int half = punchMaxFrames / 2;
+        // simple “lunge forward then back”
+        int forwardOffset = (punchFrame <= half)
+                ? punchFrame * 3
+                : (punchMaxFrames - punchFrame) * 3;
+
+        SaxionApp.drawImage(punchImgPath, baseX + forwardOffset, baseY);
+
+        if (punchFrame >= punchMaxFrames) {
+            punchActive = false;
+        }
+    }
+
+    // Call all ability draw functions every frame
+    private void drawAllAbilities() {
+        drawTreeAbility();
+        drawStoneAbility();
+        drawWallAbility();
+        drawPunchAbility();
     }
 
     public void introHud() {
@@ -340,6 +608,36 @@ public class Application implements GameLoop {
         if (enemyHp < 0) enemyHp = 0;
     }
 
+    // Handle keyboard input when the current character is the Earth monster
+    private void handleEarthAbilities(KeyboardEvent e) {
+        if (inIntro) return;
+        if (currentTurn != turn.Player) return;
+
+        int key = e.getKeyCode();
+
+        // NORMAL ATTACK (Q)
+        if (key == KeyboardEvent.VK_Q) {
+            attackEnemy();
+            startNormalAttackAnimation(); // tree/stone animation
+            currentTurn = turn.Fairy;
+        }
+
+        // DEFENCE (E)
+        if (key == KeyboardEvent.VK_E) {
+            startWallAbility();
+            // you can decide whether this also ends the turn
+        }
+
+        // ULTIMATE (R)
+        if (key == KeyboardEvent.VK_R) {
+            // e.g. double damage
+            attackEnemy();
+            attackEnemy();
+            startPunchAbility();
+            currentTurn = turn.Fairy;
+        }
+    }
+
     private void nextFairy() {
         currentFairyIndex++;
 
@@ -361,11 +659,10 @@ public class Application implements GameLoop {
 
         boolean shouldHeal = currentFairy.hp < currentFairy.maxHp && Math.random() < 0.3;
 
-        if(shouldHeal)
-        {
-            int healAmount = (int)(currentFairy.hp * 0.25);
+        if (shouldHeal) {
+            int healAmount = (int) (currentFairy.hp * 0.25);
             currentFairy.hp += healAmount;
-            if(currentFairy.hp > currentFairy.maxHp) currentFairy.hp = currentFairy.maxHp;
+            if (currentFairy.hp > currentFairy.maxHp) currentFairy.hp = currentFairy.maxHp;
             nextFairy();
             return;
         }
@@ -377,7 +674,7 @@ public class Application implements GameLoop {
         double fairyScaling = currentFairy.scaling;
         double airChance = 0.4;
 
-        airChance += 0.4 * (1-playerHealthRatio);
+        airChance += 0.4 * (1 - playerHealthRatio);
         airChance += 0.3 * corruptionRatio;
 
         airChance += 0.2 * (fairyScaling - 1);
@@ -391,7 +688,7 @@ public class Application implements GameLoop {
         }
 
         double critChance = 0.1 + 0.4 * corruptionRatio;
-        if(Math.random() < critChance){
+        if (Math.random() < critChance) {
             damage *= 2;
             criticalHit = true;
         }
@@ -428,5 +725,4 @@ public class Application implements GameLoop {
         corruptionLevel -= totalDecay;
         if (corruptionLevel < 0) corruptionLevel = 0;
     }
-
 }
