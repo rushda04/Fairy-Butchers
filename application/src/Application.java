@@ -48,7 +48,7 @@ public class Application implements GameLoop {
     String characterSelection = "resources/characterSelection.png";
 
     // ===== EARTH ABILITY IMAGE PATHS =====
-    String treeImgPath = "resources/ability_tree.png";          // normal attack option 1
+    String treeImgPath = "resources/ability_tree.png";    // normal attack option 1
     String stoneImgPath = "resources/ability_stone.png";         // normal attack option 2
     String wallImgPath = "resources/ability_wall.png";          // defence
     String punchImgPath = "resources/ability_double_punch.png";  // ultimate
@@ -161,9 +161,20 @@ public class Application implements GameLoop {
 
     @Override
     public void keyboardEvent(KeyboardEvent e) {
+
+        if (inIntro) {
+            return;
+        }
+
+        if (inCharacterSelection) {
+            if (e.getKeyCode() == KeyboardEvent.VK_1) {
+                inCharacterSelection = false;
+            }
+            return;
+        }
+
         if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_Q) {
             if (currentTurn == turn.Player) {
-
                 // START NORMAL ATTACK ANIMATION (tree or stone)
                 startNormalAttackAnimation();
 
@@ -198,6 +209,7 @@ public class Application implements GameLoop {
                 useStoneThrowAttack();
             }
         }
+
 
         if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_1) {
             inCharacterSelection = false;
@@ -244,6 +256,7 @@ public class Application implements GameLoop {
         SaxionApp.drawImage(fairyScaledPath, 970, 700);
         SaxionApp.drawImage(playerScaledPath, 200, 670);
 
+
         // draw ability animations on top of battlefield
         drawAllAbilities();
 
@@ -288,7 +301,7 @@ public class Application implements GameLoop {
 
         wallScaled = loadSprite("resources/ability_wall.png", wallScaledPath, 1);
 
-        stoneScaled = loadSprite("resources/ability_stone.png", stoneScaledPath, 6);
+        stoneScaled = loadSprite("resources/ability_stone.png", stoneScaledPath, 1);
 
         if (playButtonScaled != null) {
             playButtonWidth = playButtonScaled.getWidth();
@@ -463,8 +476,23 @@ public class Application implements GameLoop {
 
     private void startStoneAbility() {
         stoneActive = true;
-        stoneX = getPlayerCenterX();
-        stoneY = getPlayerCenterY() - 20;
+
+        // Player center
+        int centerX = getPlayerCenterX();
+        int centerY = getPlayerCenterY();
+
+        // Where the player's feet are (from drawGame: player is at y = 670)
+        int playerFeetY = 670 + playerScaled.getHeight();
+
+        // Stone height (fallback if stoneScaled is null)
+        int stoneH = (stoneScaled != null) ? stoneScaled.getHeight() : 50;
+
+        int offsetX = 30;   // + right, - left
+
+        stoneX = centerX + offsetX -475;
+        stoneY = playerFeetY - stoneH +250;
+
+        System.out.println("Stone started at: " + stoneX + ", " + stoneY);
     }
 
     private void useStoneThrowAttack() {
@@ -508,11 +536,15 @@ public class Application implements GameLoop {
     private void drawStoneAbility() {
         if (!stoneActive) return;
 
+
         stoneX += stoneSpeedX;
         SaxionApp.drawImage(stoneScaledPath, stoneX, stoneY);
 
+        System.out.println("Drawing stone at: " + stoneX + ", " + stoneY);
+
         if (stoneX > getFairyCenterX() + 30) {
             stoneActive = false;
+            System.out.println("Stone deactivated");
         }
     }
 
@@ -525,13 +557,12 @@ public class Application implements GameLoop {
         // 1) X position: halfway between player and fairy
         int midX = (getPlayerCenterX() + getFairyCenterX()) / 2;
 
-        // 2) Size of the wall sprite (use scaled image if available)
         int wallW, wallH;
         if (wallScaled != null) {
             wallW = wallScaled.getWidth();
             wallH = wallScaled.getHeight();
         } else {
-            wallW = 100;  // fallback guesses if something went wrong
+            wallW = 100;  
             wallH = 120;
         }
 
