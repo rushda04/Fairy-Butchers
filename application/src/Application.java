@@ -46,6 +46,9 @@ public class Application implements GameLoop {
     BufferedImage treeScaled;
     String treeScaledPath = "resources/ability_tree_scaled.png";
 
+    BufferedImage punchScaled;
+    String punchScaledPath = "resources/ability_double_punch_scaled.png";
+
     // tree spin animation: list of rotated frame paths
     String[] treeSpinPaths;
     int treeSpinFrame = 0;
@@ -86,7 +89,7 @@ public class Application implements GameLoop {
     // ===== ANIMATION STATE: ULTIMATE (double punch) =====
     boolean punchActive = false;
     int punchFrame = 0;
-    int punchMaxFrames = 25; // short animation
+    int punchMaxFrames = 32; // short animation
 
     boolean hoveringPlayButton = false;
     boolean hoveringTutorialButton = false;
@@ -210,7 +213,9 @@ public class Application implements GameLoop {
 
         // ULTIMATE (R) – double punch
         if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_R) {
+            System.out.println("R pressed. currentTurn = " + currentTurn);
             if (currentTurn == turn.Player) {
+                System.out.println("Starting punch ability");
                 // example: extra damage for ultimate
                 attackEnemy();      // hit 1
                 attackEnemy();      // hit 2
@@ -252,7 +257,8 @@ public class Application implements GameLoop {
                 inIntro = false;
                 // TIMER: start when intro ends
                 startTimerIfNeeded();
-                SaxionApp.printLine("Play button clicked at: " + mx + "," + my);
+                //SaxionApp.printLine("Play button clicked at: " + mx + "," + my);
+                System.out.println("Play button clicked at: " + mx + "," + my);
             }
         }
     }
@@ -271,6 +277,7 @@ public class Application implements GameLoop {
 
         SaxionApp.drawImage(fairyScaledPath, 970, 700);
         SaxionApp.drawImage(playerScaledPath, 200, 670);
+
 
 
         // draw ability animations on top of battlefield
@@ -327,6 +334,8 @@ public class Application implements GameLoop {
             rotateSprite(treeScaled, angleRad, path);
             treeSpinPaths[i] = path;
         }
+
+        punchScaled = loadSprite("resources/ability_double_punch.png", punchScaledPath, 1);
 
         stoneScaled = loadSprite("resources/ability_stone.png", stoneScaledPath, 1);
 
@@ -590,6 +599,7 @@ public class Application implements GameLoop {
     }
 
     private void startPunchAbility() {
+        System.out.println("startPunchAbility() called");
         punchActive = true;
         punchFrame = 0;
     }
@@ -677,25 +687,41 @@ public class Application implements GameLoop {
         }
     }
 
-    // ===== UPDATE + DRAW: ULTIMATE DOUBLE PUNCH =====
     private void drawPunchAbility() {
         if (!punchActive) return;
 
         punchFrame++;
 
-        int baseX = getPlayerCenterX();
-        int baseY = getPlayerCenterY() - 10;
+        // In front of the player, horizontally
+        int baseX = getPlayerCenterX() + 20;
 
-        int half = punchMaxFrames / 2;
-        // simple “lunge forward then back”
-        int forwardOffset = (punchFrame <= half)
-                ? punchFrame * 3
-                : (punchMaxFrames - punchFrame) * 3;
+        // Mid‑low on the screen so it's near the characters but clearly visible
+        int baseY = 200;   // adjust up/down if you want
 
-        SaxionApp.drawImage(punchImgPath, baseX + forwardOffset, baseY);
+        int quarter = punchMaxFrames / 4;
+        int speed = 3;
+        int offsetX;
+
+        if (punchFrame < quarter) {
+            offsetX = punchFrame * speed;
+        } else if (punchFrame < 2 * quarter) {
+            offsetX = (2 * quarter - punchFrame) * speed;
+        } else if (punchFrame < 3 * quarter) {
+            offsetX = (punchFrame - 2 * quarter) * speed;
+        } else {
+            offsetX = (4 * quarter - punchFrame) * speed;
+        }
+
+        int drawX = baseX + offsetX;
+        int drawY = baseY;
+
+        System.out.println("Drawing punch frame " + punchFrame + " at " + drawX + ", " + drawY);
+
+        SaxionApp.drawImage(punchImgPath, drawX, drawY);
 
         if (punchFrame >= punchMaxFrames) {
             punchActive = false;
+            punchFrame = 0;
         }
     }
 
