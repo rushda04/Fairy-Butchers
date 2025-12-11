@@ -7,12 +7,14 @@ import nl.saxion.app.interaction.MouseEvent;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.io.File;
 import java.util.ArrayList;
 
 public class Application implements GameLoop {
     ArrayList<Player_characters> characters = readingCSVFile();
     ArrayList<Fairy> fairies = new ArrayList<>();
+
 
     enum turn {
         Player,
@@ -21,13 +23,18 @@ public class Application implements GameLoop {
 
     turn currentTurn = turn.Player;
 
+    boolean preparingNextFairy = false;
+    long prepareStartTime = 0;
+
 
     BufferedImage fairyScaled;
+    BufferedImage fairyTwoScaled;
     BufferedImage playerScaled;
     BufferedImage playButtonScaled;
     BufferedImage playButtonHoverScaled;
     BufferedImage tutorialButtonScaled;
     BufferedImage tutorialButtonHoverScaled;
+
 
     BufferedImage wallScaled;
     String wallScaledPath = "resources/ability_wall_scaled.png";
@@ -46,6 +53,7 @@ public class Application implements GameLoop {
 
 
     String fairyScaledPath = "resources/fairy_scaled.png";
+    String fairyTwoScaledPath = "resources/fairyTwo_scaled.png";
     String playerScaledPath = "resources/player_scaled.png";
     String playButtonScaledPath = "resources/playButton_scaled.png";
     String playButtonHoverScaledPath = "resources/playButton_hover_scaled.png";
@@ -301,6 +309,7 @@ public class Application implements GameLoop {
 
     public void loadSprites() {
         fairyScaled = loadSprite("resources/FairyNo2.png", fairyScaledPath, 8);
+        fairyTwoScaled = loadSprite("resources/fairyTwo.png", fairyTwoScaledPath, 8);
         playerScaled = loadSprite("resources/quake E.png", playerScaledPath, 10);
         playButtonScaled = loadSprite("resources/playButton.png", playButtonScaledPath, 8);
         playButtonHoverScaled = loadSprite("resources/playButton.png", playButtonHoverScaledPath, 6);
@@ -641,7 +650,7 @@ public class Application implements GameLoop {
             wallW = wallScaled.getWidth();
             wallH = wallScaled.getHeight();
         } else {
-            wallW = 100;  
+            wallW = 100;
             wallH = 120;
         }
 
@@ -780,6 +789,16 @@ public class Application implements GameLoop {
         if (currentFairyIndex > 0) {
             currentFairy.increaseScaling();
         }
+
+        while (!currentFairy.isAlive()) {
+            currentFairyIndex++;
+
+            if (currentFairyIndex >= fairies.size()){
+                currentFairyIndex = 0;
+
+                currentFairy = fairies.get(currentFairyIndex);
+            }
+        }
     }
 
 
@@ -794,7 +813,7 @@ public class Application implements GameLoop {
             int healAmount = (int) (currentFairy.hp * 0.25);
             currentFairy.hp += healAmount;
             if (currentFairy.hp > currentFairy.maxHp) currentFairy.hp = currentFairy.maxHp;
-            nextFairy();
+
             return;
         }
 
@@ -856,4 +875,10 @@ public class Application implements GameLoop {
         corruptionLevel -= totalDecay;
         if (corruptionLevel < 0) corruptionLevel = 0;
     }
+
+    private void prepareNextFairyScreen() {
+        preparingNextFairy = true;
+        prepareStartTime = System.currentTimeMillis();
+    }
+
 }
