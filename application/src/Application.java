@@ -134,6 +134,11 @@ public class Application implements GameLoop {
 
     long gameStartTime = -1;
 
+    // ==== TURN TIMER (per player turn) ====
+    long turnStartTime = -1;        // when the current player turn started
+    int turnDurationMs = 5000;      // 5 seconds per turn
+    boolean turnTimerActive = false;
+
     public static void main(String[] args) {
         System.setProperty("sun.java2d.uiScale", "1.0");
         SaxionApp.startGameLoop(new Application(), 1536, 1024, 16);
@@ -164,9 +169,16 @@ public class Application implements GameLoop {
             return;
         }
 
+        // 1) Count down ONLY during the monster turn (turn.Player)
+        //    and switch to Fairy automatically if time is up.
+        updateTurnTimer();
+
+        // 2) If it is the fairy’s turn, let the fairy act once,
+        //    then give the turn back to the monsters and start a new 5‑second timer.
         if (currentTurn == turn.Fairy) {
             fairyTurn();
-            currentTurn = turn.Player;
+            currentTurn = turn.Player;   // give turn back to monsters
+            startTurnTimer();            // monsters get a fresh 5 seconds
         }
 
         if (!corruptionDecayedThisTurn) {
@@ -175,7 +187,6 @@ public class Application implements GameLoop {
         }
 
         drawGame();
-
     }
 
     @Override
@@ -188,6 +199,7 @@ public class Application implements GameLoop {
         if (inCharacterSelection) {
             if (e.getKeyCode() == KeyboardEvent.VK_1) {
                 inCharacterSelection = false;
+                startTurnTimer();
             }
             return;
         }
@@ -199,6 +211,7 @@ public class Application implements GameLoop {
 
                 attackEnemy();
                 currentTurn = turn.Fairy;
+                turnTimerActive = false;
             }
         }
 
@@ -222,12 +235,14 @@ public class Application implements GameLoop {
 
                 startPunchAbility(); // play punch animation
                 currentTurn = turn.Fairy;
+                turnTimerActive = false;
             }
         }
 
         if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_W) {
             if (currentTurn == turn.Player) {
                 useStoneThrowAttack();
+                turnTimerActive = false;
             }
         }
 
@@ -443,6 +458,9 @@ public class Application implements GameLoop {
 
         // TIMER: show it in the HUD
         drawTimer();
+
+        // 5‑second turn timer (red, animated)
+        drawTurnTimer();
     }
 
     // TIMER: start once, the first time this is called
@@ -519,6 +537,57 @@ public class Application implements GameLoop {
 
     private int getFairyCenterY() {
         return 700 + fairyScaled.getHeight() / 2;
+    }
+
+    // Start (or restart) the 5 second turn timer
+    private void startTurnTimer() {
+        turnStartTime = System.currentTimeMillis();
+        turnTimerActive = true;
+    }
+
+    // Seconds left (5..0) for drawing
+    private int getTurnSecondsLeft() {
+        if (!turnTimerActive) return 0;
+
+        long elapsed = System.currentTimeMillis() - turnStartTime;
+        long remainingMs = turnDurationMs - elapsed;
+        if (remainingMs < 0) remainingMs = 0;
+
+        // ceil so you see 5,4,3,2,1,0
+        return (int) Math.ceil(remainingMs / 1000.0);
+    }
+
+    // Check if the player has run out of time and switch to Fairy if so
+    private void updateTurnTimer() {
+        if (!turnTimerActive || currentTurn != turn.Player) return;
+
+        long elapsed = System.currentTimeMillis() - turnStartTime;
+        if (elapsed >= turnDurationMs) {
+            // time is up – end player turn
+            turnTimerActive = false;
+            currentTurn = turn.Fairy;
+        }
+    }
+
+    // Draw the red animated countdown (only on monster turns)
+    private void drawTurnTimer() {
+        // only show while it is the monster’s turn
+        if (!turnTimerActive || currentTurn != turn.Player) return;
+
+        int secondsLeft = getTurnSecondsLeft();
+
+        // simple pulse animation for the number
+        long elapsed = System.currentTimeMillis() - turnStartTime;
+        double phase = elapsed / 150.0;          // speed of pulsing
+        double scale = 1.0 + 0.25 * Math.sin(phase);
+        int fontSize = (int) (40 * scale);       // base size 40, pulses a bit
+
+        // ONLY this text is red
+        SaxionApp.setTextDrawingColor(Color.red);
+        SaxionApp.drawText(String.valueOf(secondsLeft), 720, 80, fontSize);
+
+        // restore text color for the rest of your HUD (white like before)
+        SaxionApp.setTextDrawingColor(Color.white);
     }
 
 // ===== START ABILITY ANIMATIONS =====
