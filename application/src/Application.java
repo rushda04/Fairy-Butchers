@@ -68,6 +68,7 @@ public class Application implements GameLoop {
     boolean inIntro = true;
     boolean inCharacterSelection = false;
     boolean corruptionDecayedThisTurn = false;
+    boolean isGameOver = false;
 
     int selectedCharacterIndex = 0;
     int currentFairyIndex = 0;
@@ -184,6 +185,19 @@ public class Application implements GameLoop {
             return;
         }
 
+        PlayerCharacters player = characters.get(selectedCharacterIndex);
+        if(player.hp<=0){
+            isGameOver = true;
+            drawGame();
+            return;
+        }
+
+        if(isGameOver){
+            drawGameOver();
+            return;
+        }
+
+
         if(currentFairy != null && !currentFairy.isAlive()){
             nextFairy();
             if(currentFairy == null)
@@ -226,6 +240,10 @@ public class Application implements GameLoop {
 
     @Override
     public void keyboardEvent(KeyboardEvent e) {
+        if (e.getKeyCode() == KeyboardEvent.VK_ESCAPE) {
+            System.exit(0);
+        }
+
         if (inIntro) return;
 
         if (inCharacterSelection) {
@@ -1006,5 +1024,19 @@ public class Application implements GameLoop {
 
         // Draw the actual image
         drawImage(potionFullScaledPath, potionAnimX, currentY);
+    }
+
+    private void drawGameOver() {
+        // Darken the screen slightly
+        setFill(new Color(0, 0, 0, 150));
+        drawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        // Draw "GAME OVER" Text
+        setTextDrawingColor(Color.red);
+        drawText("GAME OVER", SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2, 60);
+
+        setTextDrawingColor(Color.white);
+        drawText("The Fairy was too strong...", SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 2 + 50, 20);
+        drawText("Press ESC to exit", SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 2 + 100, 15);
     }
 }
