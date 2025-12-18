@@ -39,6 +39,9 @@ public class Application implements GameLoop {
     int HUD_MANA_W = 250;
     int HUD_CORRUPT_H = 750;
     int HUD_ENEMY_HP_W = 300;
+    int GROUND_LEVEL = 800;
+    int GROUND_OFFSET_FOR_SMALL_FAIRIES = 50;
+    int GROUND_OFFSET_FOR_LARGE_FAIRY = 100;
 
 
     String BACKGROUND_INTRO_PATH = "resources/fairyButchersFrontPage.png";
@@ -51,7 +54,7 @@ public class Application implements GameLoop {
     ArrayList<PlayerCharacters> characters = readingCSVFile();
     ArrayList<Fairy> fairies = new ArrayList<>();
     ArrayList<String> fairyOriginalPaths = new ArrayList<>(Arrays.asList("fairyOne.png", "FairyNo2.png", "evilFairy3.png"));
-    ArrayList<Integer> fairyScales = new ArrayList<>(Arrays.asList(8 , 8, 10));
+    ArrayList<Integer> fairyScales = new ArrayList<>(Arrays.asList(8 , 8, 9));
     ArrayList<String> fairyScaledPaths = new ArrayList<>();
 
     enum Turn {
@@ -77,6 +80,10 @@ public class Application implements GameLoop {
     BufferedImage stoneScaled;
     BufferedImage wallScaled;
     BufferedImage punchScaled;
+    BufferedImage potionFullScaled;
+    BufferedImage potionEmptyScaled;
+    String potionFullScaledPath  = "resources/Filled potion.png";
+    String potionEmptyScaledPath = "resources/Potions Empty.png";
 
     String playerScaledPath = "resources/player_scaled.png";
     String fairyScaledPath = "resources/fairy_scaled.png";
@@ -117,6 +124,17 @@ public class Application implements GameLoop {
 
     boolean punchActive = false;
     int punchFrame = 0;
+
+    // ===== POTIONS =====
+    int maxPotions = 3;     // total potions for the game
+    int potionsLeft = 3;    // how many are still available
+
+    boolean potionActive = false;   // is a drink animation playing?
+    long potionStartTime = 0;       // when the animation began (ms)
+    int potionDurationMs = 600;     // duration of animation in milliseconds (~0.6s)
+    int potionAnimX, potionAnimY;   // where we draw the potion animation
+    int currentFairyWidth;
+    int currentFairyHeight;
 
 
     long gameStartTime = -1;
@@ -229,15 +247,21 @@ public class Application implements GameLoop {
             return;
         }
 
-        // Logica Abilităților
+        if (!inIntro && e.getKeyCode() == KeyboardEvent.VK_F) {
+            if (currentTurn == Turn.PLAYER) {
+                usePotion();
+            }
+        }
+
+
         if (e.getKeyCode() == KeyboardEvent.VK_Q) {
             handlePlayerAbility(KeyboardEvent.VK_Q, this::startTreeAbility, 1);
         } else if (e.getKeyCode() == KeyboardEvent.VK_W) {
             handlePlayerAbility(KeyboardEvent.VK_W, this::startStoneAbility, 1);
         } else if (e.getKeyCode() == KeyboardEvent.VK_E) {
-            handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0); // Fără atac
+            handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0);
         } else if (e.getKeyCode() == KeyboardEvent.VK_R) {
-            handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2); // Atac dublu
+            handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2);
         }
     }
 
@@ -297,6 +321,29 @@ public class Application implements GameLoop {
         drawImage(BACKGROUND_GAME_PATH, 0, 0);
 
         if(currentFairyPath != null) {
+
+            // Calculate fairy dimensions
+            int scale = fairyScales.get(currentFairyIndex);
+            currentFairyWidth = 32 * scale;
+            currentFairyHeight = 32 * scale;
+
+            // Position fairy on right side
+            FAIRY_DRAW_X = SCREEN_WIDTH - 570;
+
+            // Calculate positions for each fairy size
+            int groundLevel = SCREEN_HEIGHT - 50; // Ground is 150px from bottom
+
+            if (currentFairyIndex == 0) {
+                // First fairy (256px): place on ground
+                FAIRY_DRAW_Y = groundLevel - currentFairyHeight;
+            } else if (currentFairyIndex == 1) {
+                // Second fairy (256px): slightly above ground
+                FAIRY_DRAW_Y = groundLevel - currentFairyHeight - 20;
+            } else {
+                // Third fairy (320px): center vertically
+                FAIRY_DRAW_Y = SCREEN_HEIGHT / 2 - currentFairyHeight / 2;
+            }
+
             drawImage(currentFairyPath, FAIRY_DRAW_X, FAIRY_DRAW_Y);
         }
 
@@ -313,7 +360,7 @@ public class Application implements GameLoop {
         int hudHpX=10, hudHpY=10, hudHpH=10;
         int hudManaX=10, hudManaY=30, hudManaH=10;
         int hudCorruptX=1470, hudCorruptY=110, hudCorruptW=50;
-        int hudEnemyX=950, hudEnemyY=680, hudEnemyH=10;
+        int hudEnemyX=0, hudEnemyY=0, hudEnemyH=10;
         int hudAbilityX=10;
         int hudAbilityStartY=110;
         int hudAbilitySize=60;
@@ -322,7 +369,18 @@ public class Application implements GameLoop {
         drawRectangle(hudHpX, hudHpY, HUD_HP_W, hudHpH);
         drawRectangle(hudManaX, hudManaY, HUD_MANA_W, hudManaH);
         drawRectangle(hudCorruptX, hudCorruptY, hudCorruptW, HUD_CORRUPT_H);
+
+        if(currentFairyIndex < 2){
+            hudEnemyX = 950;
+            hudEnemyY = 680;
+        }
+        else {
+            hudEnemyX = FAIRY_DRAW_X + currentFairyWidth / 2 - HUD_ENEMY_HP_W /2;
+            hudEnemyY = FAIRY_DRAW_Y - 40;
+        }
+
         drawRectangle(hudEnemyX, hudEnemyY, HUD_ENEMY_HP_W, hudEnemyH);
+
 
         for (int i = 0; i < 4; i++) {
             drawRectangle(hudAbilityX, hudAbilityStartY + i * 70, hudAbilitySize, hudAbilitySize);
@@ -333,10 +391,11 @@ public class Application implements GameLoop {
         }
         fillMana(75);
         fillCorruption(corruptionLevel);
-        fillEnemy(currentFairy.hp, currentFairy.maxHp);
+        fillEnemy(currentFairy.hp, currentFairy.maxHp, hudEnemyX, hudEnemyY);
 
         drawTimer();
         drawTurnTimer();
+        drawPotionsHud();
     }
 
     private ArrayList<PlayerCharacters> readingCSVFile() {
@@ -404,6 +463,9 @@ public class Application implements GameLoop {
             treeScaled = loadSprite("resources/ability_tree.png", treeScaledPath, 1);
             stoneScaled = loadSprite("resources/ability_stone.png", stoneScaledPath, 1);
             punchScaled = loadSprite("resources/ability_double_punch.png", punchScaledPath, 1);
+            potionFullScaled = loadSprite("resources/Full potion.png",  potionFullScaledPath, 2);
+            potionEmptyScaled = loadSprite("resources/Empty potion.png", potionEmptyScaledPath, 2);
+
 
             treeSpinPaths = new String[TREE_SPIN_FRAME_COUNT];
             for (int i = 0; i < TREE_SPIN_FRAME_COUNT; i++) {
@@ -507,8 +569,14 @@ public class Application implements GameLoop {
 
     public void fillHealth(int healthPoints) {
         setFill(Color.red);
-        int maxPlayerHp = characters.isEmpty() ? PLAYER_BASE_HP : characters.get(selectedCharacterIndex).hp;
+
+        int maxPlayerHp = PLAYER_BASE_HP;
+
         int filler = (int) ((double) healthPoints / maxPlayerHp * HUD_HP_W);
+
+        if (filler < 0) filler = 0;
+        if (filler > HUD_HP_W) filler = HUD_HP_W;
+
         drawRectangle(10, 10, filler, 10);
     }
 
@@ -532,10 +600,10 @@ public class Application implements GameLoop {
         drawRectangle(hudCorruptX, drawY, hudCorruptW, filler);
     }
 
-    public void fillEnemy(int hp, int maxHp) {
+    public void fillEnemy(int hp, int maxHp, int x, int y) {
         setFill(Color.red);
         int filler = (int) ((double) hp / maxHp * HUD_ENEMY_HP_W);
-        drawRectangle(950, 680, filler, 10);
+        drawRectangle(x, y, filler, 10);
     }
 
     private int getPlayerCenterX() {
@@ -713,6 +781,7 @@ public class Application implements GameLoop {
         drawStoneAbility();
         drawWallAbility();
         drawPunchAbility();
+        drawPotionAnimation();
     }
 
     public void attackEnemy() {
@@ -815,6 +884,7 @@ public class Application implements GameLoop {
         }
 
         player.hp -= damage;
+        System.out.println("Fairy deals " + damage + " damage. Player HP: " + player.hp);
         if (player.hp < 0) player.hp = 0;
 
         increaseCorruptionDamage(damage);
@@ -840,5 +910,101 @@ public class Application implements GameLoop {
 
         corruptionLevel -= totalDecay;
         if (corruptionLevel < 0) corruptionLevel = 0;
+    }
+
+    private void drawPotionsHud() {
+        int slotSize = 48;   // size of each potion box (now only used for spacing)
+        int spacing  = 8;    // space between potions
+
+        // position on screen (adjust to where you want the potions)
+        int startX = 10;
+        int startY = 400;
+
+        for (int i = 0; i < maxPotions; i++) {
+            int x = startX + i * (slotSize + spacing);
+            int y = startY;
+
+            // REMOVE the background slot
+            // SaxionApp.setFill(Color.darkGray);
+            // SaxionApp.drawRectangle(x, y, slotSize, slotSize);
+
+            // if this potion index is still available, show full; otherwise empty
+            if (i < potionsLeft) {
+                drawImage(potionFullScaledPath, x, y);
+            } else {
+                drawImage(potionEmptyScaledPath, x, y);
+            }
+        }
+        // Optional hint text
+        setTextDrawingColor(Color.white);
+        drawText("Press F To Drink Potion", startX, startY + slotSize + 20, 16);
+
+    }
+
+    // ===== POTION ABILITY LOGIC =====
+    private void usePotion() {
+        // No potions or animation already playing: do nothing
+        if (potionsLeft <= 0 || potionActive) return;
+
+        if (characters.isEmpty()) return;  // safety
+
+        PlayerCharacters player = characters.get(selectedCharacterIndex);
+
+        int healAmount = 30;   // how much a potion heals (tune this)
+
+        player.hp += healAmount;
+
+        // Your HP bar fillHealth() uses 0-100, so we cap at 100
+        if (player.hp > PLAYER_BASE_HP) player.hp = PLAYER_BASE_HP;
+
+        potionsLeft--;
+
+        // Start visual animation over the player
+        startPotionAnimation();
+
+        // If taking a potion should COST your turn:
+        currentTurn = Turn.FAIRY;
+        turnTimerActive = false;
+
+        // If you want potion to be "free", delete the two lines above.
+    }
+
+    // Start the potion animation at the player's head
+    private void startPotionAnimation() {
+        potionActive = true;
+        potionStartTime = System.currentTimeMillis();  // start time of animation
+
+        // center of player sprite
+        int centerX = getPlayerCenterX();
+
+        // from drawGame() you draw player at y = 670
+        int playerTopY = 670;
+
+        int potionW = (potionFullScaled != null) ? potionFullScaled.getWidth() : 32;
+        int potionH = (potionFullScaled != null) ? potionFullScaled.getHeight() : 32;
+
+        // start just above the player's head
+        potionAnimX = centerX - potionW / 2;
+        potionAnimY = playerTopY - potionH - 20;
+    }
+
+    private void drawPotionAnimation() {
+        if (!potionActive) return;
+
+        long elapsed = System.currentTimeMillis() - potionStartTime;
+
+        // If the animation time is up
+        if (elapsed >= potionDurationMs) {
+            System.out.println("Potion animation finished. Ready for next one.");
+            potionActive = false; // THIS IS THE FIX: Allow another potion use
+            return;
+        }
+
+        // Animation: Move upward based on time
+        double progress = elapsed / (double) potionDurationMs;
+        int currentY = potionAnimY - (int)(progress * 50);
+
+        // Draw the actual image
+        drawImage(potionFullScaledPath, potionAnimX, currentY);
     }
 }
