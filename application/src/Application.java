@@ -83,8 +83,24 @@ public class Application implements GameLoop {
     BufferedImage punchScaled;
     BufferedImage potionFullScaled;
     BufferedImage potionEmptyScaled;
+
+    // === Ability icon images and paths ===
+    BufferedImage iconTree;
+    BufferedImage iconStone;
+    BufferedImage iconWall;
+    BufferedImage iconPunch;
+
+
+    String iconTreePath  = "resources/icon_tree_scaled.png";
+    String iconStonePath = "resources/icon_stone_scaled.png";
+    String iconWallPath  = "resources/icon_wall_scaled.png";
+    String iconPunchPath = "resources/icon_punch_scaled.png";
+
+
     String potionFullScaledPath  = "resources/Filled potion.png";
     String potionEmptyScaledPath = "resources/Potions Empty.png";
+
+
 
     String playerScaledPath = "resources/player_scaled.png";
     String fairyScaledPath = "resources/fairy_scaled.png";
@@ -400,9 +416,68 @@ public class Application implements GameLoop {
         drawRectangle(hudEnemyX, hudEnemyY, HUD_ENEMY_HP_W, hudEnemyH);
 
 
+        // Draw 4 ability slots + icons for Q, W, E, R
         for (int i = 0; i < 4; i++) {
-            drawRectangle(hudAbilityX, hudAbilityStartY + i * 70, hudAbilitySize, hudAbilitySize);
+            int boxX = hudAbilityX;
+            int boxY = hudAbilityStartY + i * 70;
+
+            // Draw the ability box
+            drawRectangle(boxX, boxY, hudAbilitySize, hudAbilitySize);
+
+            // Decide which HUD icon belongs in this slot
+            String        iconPath  = null;
+            BufferedImage iconImage = null;
+
+            if (i == 0) {              // Q - Tree
+                iconPath  = iconTreePath;
+                iconImage = iconTree;
+            } else if (i == 1) {       // W - Stone
+                iconPath  = iconStonePath;
+                iconImage = iconStone;
+            } else if (i == 2) {       // E - Wall
+                iconPath  = iconWallPath;
+                iconImage = iconWall;
+            } else if (i == 3) {       // R - Punch
+                iconPath  = iconPunchPath;
+                iconImage = iconPunch;
+            }
+
+            // ---- SCALE THE ICON TO FIT IN THE BOX ----
+            if (iconPath != null && iconImage != null) {
+                int originalW = iconImage.getWidth();
+                int originalH = iconImage.getHeight();
+
+                // how big the icon may be inside the box (leave margin 4 px each side)
+                int maxSize = hudAbilitySize - 8;
+
+                // scale to fit, keeping aspect ratio
+                double scale = Math.min(
+                        maxSize / (double) originalW,
+                        maxSize / (double) originalH
+                );
+
+                int scaledW = (int) (originalW * scale);
+                int scaledH = (int) (originalH * scale);
+
+                // center the scaled icon in the box
+                int iconX = boxX + (hudAbilitySize - scaledW) / 2;
+                int iconY = boxY + (hudAbilitySize - scaledH) / 2;
+
+                // this overload exists: (String path, int x, int y, int width, int height)
+                drawImage(iconPath, iconX, iconY, scaledW, scaledH);
+            }
+
+            // Draw the key labels Q/W/E/R
+            setTextDrawingColor(Color.white);
+            String keyLabel = (i == 0) ? "Q"
+                    : (i == 1) ? "W"
+                    : (i == 2) ? "E" : "R";
+            drawText(keyLabel,
+                    boxX + hudAbilitySize + 10,
+                    boxY + hudAbilitySize - 10,
+                    18);
         }
+
 
         if (!characters.isEmpty()) {
             fillHealth(characters.get(selectedCharacterIndex).hp);
@@ -483,6 +558,13 @@ public class Application implements GameLoop {
             punchScaled = loadSprite("resources/ability_double_punch.png", punchScaledPath, 1);
             potionFullScaled = loadSprite("resources/Full potion.png",  potionFullScaledPath, 2);
             potionEmptyScaled = loadSprite("resources/Empty potion.png", potionEmptyScaledPath, 2);
+
+
+            // === Load separate ability icons for HUD ===
+            iconTree  = loadSprite("resources/icon_tree.png",  iconTreePath, 1);
+            iconStone = loadSprite("resources/icon_stone.png", iconStonePath, 1);
+            iconWall  = loadSprite("resources/icon_wall.png",  iconWallPath, 1);
+            iconPunch = loadSprite("resources/icon_punch.png", iconPunchPath, 1);
 
 
             treeSpinPaths = new String[TREE_SPIN_FRAME_COUNT];
