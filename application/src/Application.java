@@ -391,66 +391,75 @@ public class Application implements GameLoop {
 
     private void drawInGameHud() {
 
-        int hudHpX=10, hudHpY=10, hudHpH=10;
-        int hudManaX=10, hudManaY=30, hudManaH=10;
-        int hudCorruptX=1470, hudCorruptY=110, hudCorruptW=50;
-        int hudEnemyX=0, hudEnemyY=0, hudEnemyH=10;
-        int hudAbilityX=10;
-        int hudAbilityStartY=110;
-        int hudAbilitySize=60;
+        /* // === 0. Background panel for the left-side HUD ===
+        int panelX = 0;
+        int panelY = 0;
+        int panelW = 260;
+        int panelH = 480;
 
+        // semi-transparent dark background so UI is readable
+        setFill(new Color(0, 0, 0, 160));
+        drawRectangle(panelX, panelY, panelW, panelH); */
+
+        // === 1. Basic positions (same as before, but grouped) ===
+        int hudHpX = 10, hudHpY = 10, hudHpH = 10;
+        int hudManaX = 10, hudManaY = 30, hudManaH = 10;
+        int hudCorruptX = 1470, hudCorruptY = 110, hudCorruptW = 50;  // right-side corruption bar
+        int hudEnemyX = 0, hudEnemyY = 0, hudEnemyH = 10;
+
+        int hudAbilityX = 10;
+        int hudAbilityStartY = 110;
+        int hudAbilitySize = 60;
+
+        // === 2. Draw empty bar backgrounds ===
         setFill(Color.lightGray);
         drawRectangle(hudHpX, hudHpY, HUD_HP_W, hudHpH);
         drawRectangle(hudManaX, hudManaY, HUD_MANA_W, hudManaH);
         drawRectangle(hudCorruptX, hudCorruptY, hudCorruptW, HUD_CORRUPT_H);
 
-        if(currentFairyIndex < 2){
+        // Enemy HP bar position (left for small fairies, above big fairy)
+        if (currentFairyIndex < 2) {
             hudEnemyX = 950;
             hudEnemyY = 680;
-        }
-        else {
-            hudEnemyX = FAIRY_DRAW_X + currentFairyWidth / 2 - HUD_ENEMY_HP_W /2;
+        } else {
+            hudEnemyX = FAIRY_DRAW_X + currentFairyWidth / 2 - HUD_ENEMY_HP_W / 2;
             hudEnemyY = FAIRY_DRAW_Y - 40;
         }
-
         drawRectangle(hudEnemyX, hudEnemyY, HUD_ENEMY_HP_W, hudEnemyH);
 
-
-        // Draw 4 ability slots + icons for Q, W, E, R
+        // === 3. Ability icons Q/W/E/R in boxes ===
         for (int i = 0; i < 4; i++) {
             int boxX = hudAbilityX;
             int boxY = hudAbilityStartY + i * 70;
 
-            // Draw the ability box
+            // box background
+            setFill(Color.lightGray);
             drawRectangle(boxX, boxY, hudAbilitySize, hudAbilitySize);
 
             // Decide which HUD icon belongs in this slot
-            String        iconPath  = null;
+            String iconPath = null;
             BufferedImage iconImage = null;
 
             if (i == 0) {              // Q - Tree
-                iconPath  = iconTreePath;
+                iconPath = iconTreePath;
                 iconImage = iconTree;
             } else if (i == 1) {       // W - Stone
-                iconPath  = iconStonePath;
+                iconPath = iconStonePath;
                 iconImage = iconStone;
             } else if (i == 2) {       // E - Wall
-                iconPath  = iconWallPath;
+                iconPath = iconWallPath;
                 iconImage = iconWall;
             } else if (i == 3) {       // R - Punch
-                iconPath  = iconPunchPath;
+                iconPath = iconPunchPath;
                 iconImage = iconPunch;
             }
 
-            // ---- SCALE THE ICON TO FIT IN THE BOX ----
+            // Scale the icon to fit nicely in the box
             if (iconPath != null && iconImage != null) {
                 int originalW = iconImage.getWidth();
                 int originalH = iconImage.getHeight();
 
-                // how big the icon may be inside the box (leave margin 4 px each side)
-                int maxSize = hudAbilitySize - 8;
-
-                // scale to fit, keeping aspect ratio
+                int maxSize = hudAbilitySize - 8;  // small margin
                 double scale = Math.min(
                         maxSize / (double) originalW,
                         maxSize / (double) originalH
@@ -459,15 +468,13 @@ public class Application implements GameLoop {
                 int scaledW = (int) (originalW * scale);
                 int scaledH = (int) (originalH * scale);
 
-                // center the scaled icon in the box
                 int iconX = boxX + (hudAbilitySize - scaledW) / 2;
                 int iconY = boxY + (hudAbilitySize - scaledH) / 2;
 
-                // this overload exists: (String path, int x, int y, int width, int height)
                 drawImage(iconPath, iconX, iconY, scaledW, scaledH);
             }
 
-            // Draw the key labels Q/W/E/R
+            // Draw the key labels Q/W/E/R next to each box
             setTextDrawingColor(Color.white);
             String keyLabel = (i == 0) ? "Q"
                     : (i == 1) ? "W"
@@ -478,14 +485,15 @@ public class Application implements GameLoop {
                     18);
         }
 
-
+        // === 4. Fill bars with actual values ===
         if (!characters.isEmpty()) {
             fillHealth(characters.get(selectedCharacterIndex).hp);
         }
-        fillMana(75);
+        fillMana(75);  // you can later replace 75 with real mana if you add it
         fillCorruption(corruptionLevel);
         fillEnemy(currentFairy.hp, currentFairy.maxHp, hudEnemyX, hudEnemyY);
 
+        // === 5. Timer, turn timer, potions ===
         drawTimer();
         drawTurnTimer();
         drawPotionsHud();
