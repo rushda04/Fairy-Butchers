@@ -152,9 +152,10 @@ public class Application implements GameLoop {
 
     boolean treeActive = false;
     int treeX, treeY;
-    int treeSpeedX = 18;
+    int treeSpeedX = 35;
     String[] treeSpinPaths;
     int treeSpinFrame = 0;
+    double TREE_DRAW_SCALE = 0.6;
 
     boolean stoneActive = false;
     int stoneX, stoneY;
@@ -162,6 +163,7 @@ public class Application implements GameLoop {
 
     boolean wallActive = false;
     int wallFrame = 0;
+    double WALL_DRAW_SCALE = 0.7;
 
     boolean punchActive = false;
     int punchFrame = 0;
@@ -338,28 +340,29 @@ public class Application implements GameLoop {
         if (e.getKeyCode() == KeyboardEvent.VK_Q) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_Q, this::startWaveAbility, 1);
-            } else {
+            } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_Q, this::startTreeAbility, 1);
             }
+            // characters 1 and 2 do nothing (for now)
 
         } else if (e.getKeyCode() == KeyboardEvent.VK_W) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_W, this::startCageAbility, 1);
-            } else {
+            } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_W, this::startStoneAbility, 1);
             }
 
         } else if (e.getKeyCode() == KeyboardEvent.VK_E) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_E, this::startShieldAbility, 0);
-            } else {
+            } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0);
             }
 
         } else if (e.getKeyCode() == KeyboardEvent.VK_R) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_R, this::startBloodsuckerAbility, 2);
-            } else {
+            } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2);
             }
         }
@@ -829,13 +832,13 @@ public class Application implements GameLoop {
         return FAIRY_DRAW_Y + currentFairyHeight / 2;
     }
 
-    // Assume: character index 0 = Earth monster, 1 = Water monster
+    // Earth = character 4 (index 3), Water = character 3 (index 2)
     private boolean isEarthCharacter() {
-        return selectedCharacterIndex == 0;
+        return selectedCharacterIndex == 3;   // key '4'
     }
 
     private boolean isWaterCharacter() {
-        return selectedCharacterIndex == 2;
+        return selectedCharacterIndex == 2;   // key '3'
     }
 
     private void startTurnTimer() {
@@ -875,13 +878,22 @@ public class Application implements GameLoop {
 
     private void startTreeAbility() {
         treeActive = true;
+        treeSpinFrame = 0;
+
         int centerX = getPlayerCenterX();
         int playerFeetY = getPlayerFeetY();
-        int treeH = (treeScaled != null ? treeScaled.getHeight() : 80);
 
-        treeX = centerX - 400;
-        treeY = playerFeetY - treeH + 100;
-        treeSpinFrame = 0;
+        // Original (loaded) tree size
+        int origW = (treeScaled != null ? treeScaled.getWidth()  : 80);
+        int origH = (treeScaled != null ? treeScaled.getHeight() : 80);
+
+        // Size we will actually draw
+        int drawW = (int)(origW * TREE_DRAW_SCALE);
+        int drawH = (int)(origH * TREE_DRAW_SCALE);
+
+        // Start just in front of the player, near his feet
+        treeX = centerX - drawW / 2;
+        treeY = playerFeetY - drawH + 20;   // adjust +20 up/down if needed
     }
 
     private void startStoneAbility() {
@@ -936,17 +948,34 @@ public class Application implements GameLoop {
     private void drawTreeAbility() {
         if (!treeActive) return;
 
+        // Move tree horizontally to the right
         treeX += treeSpeedX;
 
+        // Original sprite size
+        int origW = (treeScaled != null ? treeScaled.getWidth()  : 80);
+        int origH = (treeScaled != null ? treeScaled.getHeight() : 80);
+
+        // Draw size after scaling
+        int drawW = (int)(origW * TREE_DRAW_SCALE);
+        int drawH = (int)(origH * TREE_DRAW_SCALE);
+
+        // Choose spin frame (if available)
+        String framePath;
         if (treeSpinPaths != null && treeSpinPaths.length > 0) {
-            String framePath = treeSpinPaths[treeSpinFrame];
-            drawImage(framePath, treeX, treeY);
+            framePath = treeSpinPaths[treeSpinFrame];
             treeSpinFrame = (treeSpinFrame + 1) % TREE_SPIN_FRAME_COUNT;
         } else {
-            drawImage(treeScaledPath, treeX, treeY);
+            framePath = treeScaledPath;
         }
 
-        if (treeX > getFairyCenterX() + 30) {
+        // Draw the scaled tree
+        drawImage(framePath, treeX, treeY, drawW, drawH);
+
+        // ==== Collision: let the tree go all the way across the fairy ====
+        int treeRight  = treeX + drawW;
+        int fairyRight = FAIRY_DRAW_X + currentFairyWidth + drawW / 3 ;   // full width of fairy
+
+        if (treeRight >= fairyRight) {
             treeActive = false;
             treeSpinFrame = 0;
         }
@@ -967,24 +996,58 @@ public class Application implements GameLoop {
         if (!wallActive) return;
 
         wallFrame++;
-        int midX = (getPlayerCenterX() + getFairyCenterX()) / 2;
-        int wallW = (wallScaled != null ? wallScaled.getWidth() : 100);
-        int wallH = (wallScaled != null ? wallScaled.getHeight() : 120);
-        int wallX = midX - wallW / 2;
-        int playerFeetY = getPlayerFeetY();
-        int baseY = playerFeetY - wallH + 100;
+
+        // Original wall sprite size
+        int origW = (wallScaled != null ? wallScaled.getWidth()  : 100);
+        int origH = (wallScaled != null ? wallScaled.getHeight() : 120);
+
+        // Final draw size (scaled down so it isn't so tall)
+        int wallW = (int)(origW * WALL_DRAW_SCALE);
+        int wallH = (int)(origH * WALL_DRAW_SCALE);
+
+        // ----- POSITION: just in front (bottom-right) of the player -----
+
+        // Left edge of the player on screen
+        int playerLeft = PLAYER_DRAW_X;
+
+        // Horizontal offset from the player's left side to where the wall should stand.
+        // Tweak this until it looks good. 240 is a good starting value.
+        int offsetFromPlayer = 500;
+
+        // Center the wall around that point
+        int wallXCenter = playerLeft + offsetFromPlayer;
+        int wallX       = wallXCenter - wallW / 2;
+
+        // Y: make the wall stand on the same "ground" as the player
+        int playerFeetY    = getPlayerFeetY();
+        int groundOffsetY  = 250;              // tweak this
+        int baseY          = playerFeetY - wallH + groundOffsetY;
+
+        // ----- Rising / staying / sinking animation -----
+
+        int riseDuration = 20;           // frames to rise up
+        int sinkDuration = 20;           // frames to sink down
+        int totalFrames  = WALL_MAX_FRAMES;
 
         int riseOffset = 0;
-        if (wallFrame < 20) {
-            riseOffset = (20 - wallFrame) * 3;
-        } else if (wallFrame > WALL_MAX_FRAMES - 20) {
-            riseOffset = (wallFrame - (WALL_MAX_FRAMES - 20)) * 3;
+
+        if (wallFrame < riseDuration) {
+            // Start below ground and move up
+            riseOffset = (riseDuration - wallFrame) * 3;   // positive → lower (below baseY)
+        } else if (wallFrame > totalFrames - sinkDuration) {
+            // Sink back into the ground at the end
+            riseOffset = (wallFrame - (totalFrames - sinkDuration)) * 3;
         }
 
-        drawImage(wallScaledPath, wallX, baseY + riseOffset);
+        int wallY = baseY + riseOffset;
 
+        // Draw the scaled wall in front of the player
+        drawImage(wallScaledPath, wallX, wallY, wallW, wallH);
+
+        // End of animation
         if (wallFrame >= WALL_MAX_FRAMES) {
             wallActive = false;
+            wallFrame = 0;
         }
     }
 
