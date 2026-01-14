@@ -84,6 +84,12 @@ public class Application implements GameLoop {
     BufferedImage potionFullScaled;
     BufferedImage potionEmptyScaled;
 
+    // === Water monster ability sprites ===
+    BufferedImage waveScaled;
+    BufferedImage cageScaled;
+    BufferedImage shieldScaled;
+    BufferedImage bloodsuckerScaled;
+
     // === Ability icon images and paths ===
     BufferedImage iconTree;
     BufferedImage iconStone;
@@ -91,10 +97,23 @@ public class Application implements GameLoop {
     BufferedImage iconPunch;
 
 
+
+
     String iconTreePath  = "resources/icon_tree_scaled.png";
     String iconStonePath = "resources/icon_stone_scaled.png";
     String iconWallPath  = "resources/icon_wall_scaled.png";
     String iconPunchPath = "resources/icon_punch_scaled.png";
+
+    // === Water ability icons ===
+    BufferedImage iconWaterWave;
+    BufferedImage iconWaterCage;
+    BufferedImage iconWaterShield;
+    BufferedImage iconWaterBloodsucker;
+
+    String iconWaterWavePath        = "resources/icon_water_wave_scaled.png";
+    String iconWaterCagePath        = "resources/icon_water_cage_scaled.png";
+    String iconWaterShieldPath      = "resources/icon_water_shield_scaled.png";
+    String iconWaterBloodsuckerPath = "resources/icon_water_bloodsucker_scaled.png";
 
 
     String potionFullScaledPath  = "resources/Filled potion.png";
@@ -108,6 +127,11 @@ public class Application implements GameLoop {
     String stoneScaledPath = "resources/ability_stone_scaled.png";
     String treeScaledPath = "resources/ability_tree_scaled.png";
     String punchScaledPath = "resources/ability_double_punch_scaled.png";
+
+    String waveScaledPath        = "resources/water_ability_wave_scaled.png";
+    String cageScaledPath        = "resources/water_ability_cage_scaled.png";
+    String shieldScaledPath      = "resources/water_ability_shield_scaled.png";
+    String bloodsuckerScaledPath = "resources/water_ability_bloodsucker_scaled.png";
 
     String playButtonScaledPath = "resources/playButton_scaled.png";
     String playButtonHoverScaledPath = "resources/playButton_hover_scaled.png";
@@ -128,9 +152,10 @@ public class Application implements GameLoop {
 
     boolean treeActive = false;
     int treeX, treeY;
-    int treeSpeedX = 18;
+    int treeSpeedX = 35;
     String[] treeSpinPaths;
     int treeSpinFrame = 0;
+    double TREE_DRAW_SCALE = 0.6;
 
     boolean stoneActive = false;
     int stoneX, stoneY;
@@ -138,9 +163,33 @@ public class Application implements GameLoop {
 
     boolean wallActive = false;
     int wallFrame = 0;
+    double WALL_DRAW_SCALE = 0.7;
 
     boolean punchActive = false;
     int punchFrame = 0;
+
+    // === Water abilities state ===
+    boolean waveActive = false;
+    int waveX, waveY;
+    int waveSpeedX = 22;
+
+    boolean cageActive = false;
+    int cageFrame = 0;
+    int CAGE_MAX_FRAMES = 60;
+
+    boolean shieldActive = false;
+    int shieldFrame = 0;
+    int SHIELD_MAX_FRAMES = 60;
+
+    boolean bloodsuckerActive = false;
+    int bloodX, bloodY;
+    int bloodSpeedX = 24;
+
+    int waveFrame = 0;
+    int WAVE_MAX_FRAMES = 30;
+
+    int bloodFrame = 0;
+    int BLOOD_MAX_FRAMES = 50;
 
     // ===== POTIONS =====
     int maxPotions = 3;     // total potions for the game
@@ -289,13 +338,33 @@ public class Application implements GameLoop {
 
 
         if (e.getKeyCode() == KeyboardEvent.VK_Q) {
-            handlePlayerAbility(KeyboardEvent.VK_Q, this::startTreeAbility, 1);
+            if (isWaterCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_Q, this::startWaveAbility, 1);
+            } else if (isEarthCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_Q, this::startTreeAbility, 1);
+            }
+            // characters 1 and 2 do nothing (for now)
+
         } else if (e.getKeyCode() == KeyboardEvent.VK_W) {
-            handlePlayerAbility(KeyboardEvent.VK_W, this::startStoneAbility, 1);
+            if (isWaterCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_W, this::startCageAbility, 1);
+            } else if (isEarthCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_W, this::startStoneAbility, 1);
+            }
+
         } else if (e.getKeyCode() == KeyboardEvent.VK_E) {
-            handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0);
+            if (isWaterCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_E, this::startShieldAbility, 0);
+            } else if (isEarthCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0);
+            }
+
         } else if (e.getKeyCode() == KeyboardEvent.VK_R) {
-            handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2);
+            if (isWaterCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_R, this::startBloodsuckerAbility, 2);
+            } else if (isEarthCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2);
+            }
         }
     }
 
@@ -440,20 +509,38 @@ public class Application implements GameLoop {
             String iconPath = null;
             BufferedImage iconImage = null;
 
-            if (i == 0) {              // Q - Tree
-                iconPath = iconTreePath;
-                iconImage = iconTree;
-            } else if (i == 1) {       // W - Stone
-                iconPath = iconStonePath;
-                iconImage = iconStone;
-            } else if (i == 2) {       // E - Wall
-                iconPath = iconWallPath;
-                iconImage = iconWall;
-            } else if (i == 3) {       // R - Punch
-                iconPath = iconPunchPath;
-                iconImage = iconPunch;
-            }
+            if (isEarthCharacter()) {
+                // Earth monster icons
+                if (i == 0) {              // Q - Tree
+                    iconPath = iconTreePath;
+                    iconImage = iconTree;
+                } else if (i == 1) {       // W - Stone
+                    iconPath = iconStonePath;
+                    iconImage = iconStone;
+                } else if (i == 2) {       // E - Wall
+                    iconPath = iconWallPath;
+                    iconImage = iconWall;
+                } else if (i == 3) {       // R - Punch
+                    iconPath = iconPunchPath;
+                    iconImage = iconPunch;
+                }
 
+            } else if (isWaterCharacter()) {
+                // Water monster icons
+                if (i == 0) {              // Q - Wave
+                    iconPath = iconWaterWavePath;
+                    iconImage = iconWaterWave;
+                } else if (i == 1) {       // W - Cage
+                    iconPath = iconWaterCagePath;
+                    iconImage = iconWaterCage;
+                } else if (i == 2) {       // E - Shield
+                    iconPath = iconWaterShieldPath;
+                    iconImage = iconWaterShield;
+                } else if (i == 3) {       // R - Bloodsucker
+                    iconPath = iconWaterBloodsuckerPath;
+                    iconImage = iconWaterBloodsucker;
+                }
+            }
             // Scale the icon to fit nicely in the box
             if (iconPath != null && iconImage != null) {
                 int originalW = iconImage.getWidth();
@@ -567,6 +654,12 @@ public class Application implements GameLoop {
             potionFullScaled = loadSprite("resources/Full potion.png",  potionFullScaledPath, 2);
             potionEmptyScaled = loadSprite("resources/Empty potion.png", potionEmptyScaledPath, 2);
 
+            // === Water monster abilities ===
+            waveScaled        = loadSprite("resources/water_ability_wave.png",        waveScaledPath,        5);
+            cageScaled        = loadSprite("resources/water_ability_cage.png",        cageScaledPath,        10);
+            shieldScaled      = loadSprite("resources/water_ability_shield.png",      shieldScaledPath,      5);
+            bloodsuckerScaled = loadSprite("resources/water_ability_bloodsucker.png", bloodsuckerScaledPath, 5);
+
 
             // === Load separate ability icons for HUD ===
             iconTree  = loadSprite("resources/icon_tree.png",  iconTreePath, 1);
@@ -574,6 +667,11 @@ public class Application implements GameLoop {
             iconWall  = loadSprite("resources/icon_wall.png",  iconWallPath, 1);
             iconPunch = loadSprite("resources/icon_punch.png", iconPunchPath, 1);
 
+            // === Load water ability icons ===
+            iconWaterWave        = loadSprite("resources/icon_water_wave.png",        iconWaterWavePath,        1);
+            iconWaterCage        = loadSprite("resources/icon_water_cage.png",        iconWaterCagePath,        1);
+            iconWaterShield      = loadSprite("resources/icon_water_shield.png",      iconWaterShieldPath,      1);
+            iconWaterBloodsucker = loadSprite("resources/icon_water_bloodsucker.png", iconWaterBloodsuckerPath, 1);
 
             treeSpinPaths = new String[TREE_SPIN_FRAME_COUNT];
             for (int i = 0; i < TREE_SPIN_FRAME_COUNT; i++) {
@@ -727,11 +825,20 @@ public class Application implements GameLoop {
     }
 
     private int getFairyCenterX() {
-        return FAIRY_DRAW_X + 50;
+        return FAIRY_DRAW_X + currentFairyWidth / 2;
     }
 
     private int getFairyCenterY() {
-        return FAIRY_DRAW_Y + 50;
+        return FAIRY_DRAW_Y + currentFairyHeight / 2;
+    }
+
+    // Earth = character 4 (index 3), Water = character 3 (index 2)
+    private boolean isEarthCharacter() {
+        return selectedCharacterIndex == 3;   // key '4'
+    }
+
+    private boolean isWaterCharacter() {
+        return selectedCharacterIndex == 2;   // key '3'
     }
 
     private void startTurnTimer() {
@@ -771,13 +878,22 @@ public class Application implements GameLoop {
 
     private void startTreeAbility() {
         treeActive = true;
+        treeSpinFrame = 0;
+
         int centerX = getPlayerCenterX();
         int playerFeetY = getPlayerFeetY();
-        int treeH = (treeScaled != null ? treeScaled.getHeight() : 80);
 
-        treeX = centerX - 400;
-        treeY = playerFeetY - treeH + 100;
-        treeSpinFrame = 0;
+        // Original (loaded) tree size
+        int origW = (treeScaled != null ? treeScaled.getWidth()  : 80);
+        int origH = (treeScaled != null ? treeScaled.getHeight() : 80);
+
+        // Size we will actually draw
+        int drawW = (int)(origW * TREE_DRAW_SCALE);
+        int drawH = (int)(origH * TREE_DRAW_SCALE);
+
+        // Start just in front of the player, near his feet
+        treeX = centerX - drawW / 2;
+        treeY = playerFeetY - drawH + 20;   // adjust +20 up/down if needed
     }
 
     private void startStoneAbility() {
@@ -800,20 +916,66 @@ public class Application implements GameLoop {
         punchFrame = 0;
     }
 
+    // === WATER MONSTER ABILITIES ===
+
+    private void startWaveAbility() {
+        waveActive = true;
+        waveFrame = 0;   // reset animation
+
+        int centerX = getPlayerCenterX();
+        int playerFeetY = getPlayerFeetY();
+        int h = (waveScaled != null ? waveScaled.getHeight() : 80);
+
+        waveX = centerX;
+        waveY = playerFeetY - h + 80;  // base Y for the arc
+    }
+
+    private void startCageAbility() {
+        cageActive = true;
+        cageFrame = 0;
+    }
+
+    private void startShieldAbility() {
+        shieldActive = true;
+        shieldFrame = 0;
+    }
+
+    private void startBloodsuckerAbility() {
+        bloodsuckerActive = true;
+        bloodFrame = 0;     // reset animation
+    }
+
     private void drawTreeAbility() {
         if (!treeActive) return;
 
+        // Move tree horizontally to the right
         treeX += treeSpeedX;
 
+        // Original sprite size
+        int origW = (treeScaled != null ? treeScaled.getWidth()  : 80);
+        int origH = (treeScaled != null ? treeScaled.getHeight() : 80);
+
+        // Draw size after scaling
+        int drawW = (int)(origW * TREE_DRAW_SCALE);
+        int drawH = (int)(origH * TREE_DRAW_SCALE);
+
+        // Choose spin frame (if available)
+        String framePath;
         if (treeSpinPaths != null && treeSpinPaths.length > 0) {
-            String framePath = treeSpinPaths[treeSpinFrame];
-            drawImage(framePath, treeX, treeY);
+            framePath = treeSpinPaths[treeSpinFrame];
             treeSpinFrame = (treeSpinFrame + 1) % TREE_SPIN_FRAME_COUNT;
         } else {
-            drawImage(treeScaledPath, treeX, treeY);
+            framePath = treeScaledPath;
         }
 
-        if (treeX > getFairyCenterX() + 30) {
+        // Draw the scaled tree
+        drawImage(framePath, treeX, treeY, drawW, drawH);
+
+        // ==== Collision: let the tree go all the way across the fairy ====
+        int treeRight  = treeX + drawW;
+        int fairyRight = FAIRY_DRAW_X + currentFairyWidth + drawW / 3 ;   // full width of fairy
+
+        if (treeRight >= fairyRight) {
             treeActive = false;
             treeSpinFrame = 0;
         }
@@ -834,24 +996,58 @@ public class Application implements GameLoop {
         if (!wallActive) return;
 
         wallFrame++;
-        int midX = (getPlayerCenterX() + getFairyCenterX()) / 2;
-        int wallW = (wallScaled != null ? wallScaled.getWidth() : 100);
-        int wallH = (wallScaled != null ? wallScaled.getHeight() : 120);
-        int wallX = midX - wallW / 2;
-        int playerFeetY = getPlayerFeetY();
-        int baseY = playerFeetY - wallH + 100;
+
+        // Original wall sprite size
+        int origW = (wallScaled != null ? wallScaled.getWidth()  : 100);
+        int origH = (wallScaled != null ? wallScaled.getHeight() : 120);
+
+        // Final draw size (scaled down so it isn't so tall)
+        int wallW = (int)(origW * WALL_DRAW_SCALE);
+        int wallH = (int)(origH * WALL_DRAW_SCALE);
+
+        // ----- POSITION: just in front (bottom-right) of the player -----
+
+        // Left edge of the player on screen
+        int playerLeft = PLAYER_DRAW_X;
+
+        // Horizontal offset from the player's left side to where the wall should stand.
+        // Tweak this until it looks good. 240 is a good starting value.
+        int offsetFromPlayer = 500;
+
+        // Center the wall around that point
+        int wallXCenter = playerLeft + offsetFromPlayer;
+        int wallX       = wallXCenter - wallW / 2;
+
+        // Y: make the wall stand on the same "ground" as the player
+        int playerFeetY    = getPlayerFeetY();
+        int groundOffsetY  = 250;              // tweak this
+        int baseY          = playerFeetY - wallH + groundOffsetY;
+
+        // ----- Rising / staying / sinking animation -----
+
+        int riseDuration = 20;           // frames to rise up
+        int sinkDuration = 20;           // frames to sink down
+        int totalFrames  = WALL_MAX_FRAMES;
 
         int riseOffset = 0;
-        if (wallFrame < 20) {
-            riseOffset = (20 - wallFrame) * 3;
-        } else if (wallFrame > WALL_MAX_FRAMES - 20) {
-            riseOffset = (wallFrame - (WALL_MAX_FRAMES - 20)) * 3;
+
+        if (wallFrame < riseDuration) {
+            // Start below ground and move up
+            riseOffset = (riseDuration - wallFrame) * 3;   // positive → lower (below baseY)
+        } else if (wallFrame > totalFrames - sinkDuration) {
+            // Sink back into the ground at the end
+            riseOffset = (wallFrame - (totalFrames - sinkDuration)) * 3;
         }
 
-        drawImage(wallScaledPath, wallX, baseY + riseOffset);
+        int wallY = baseY + riseOffset;
 
+        // Draw the scaled wall in front of the player
+        drawImage(wallScaledPath, wallX, wallY, wallW, wallH);
+
+        // End of animation
         if (wallFrame >= WALL_MAX_FRAMES) {
             wallActive = false;
+            wallFrame = 0;
         }
     }
 
@@ -884,11 +1080,160 @@ public class Application implements GameLoop {
         }
     }
 
+    private void drawWaveAbility() {
+        if (!waveActive) return;
+
+        waveFrame++;
+        double t = waveFrame / (double) WAVE_MAX_FRAMES;   // 0..1
+
+        if (t >= 1.0) {
+            waveActive = false;
+            return;
+        }
+
+        int w = (waveScaled != null ? waveScaled.getWidth() : 80);
+        int h = (waveScaled != null ? waveScaled.getHeight() : 80);
+
+        // Start at player, end at fairy
+        int startX = getPlayerCenterX() - w / 2;
+        int endX   = getFairyCenterX() - w / 2;
+
+        // Base Y is where you already placed the wave
+        int baseY  = waveY;
+
+        // Make it follow an arc (up then down)
+        int arcHeight = 60;
+        int offsetY = (int)(Math.sin(t * Math.PI) * -arcHeight);
+
+        int x = (int) (startX + t * (endX - startX));
+        int y = baseY + offsetY;
+
+        drawImage(waveScaledPath, x, y);
+    }
+
+    private void drawCageAbility() {
+        if (!cageActive || currentFairy == null) return;
+
+        cageFrame++;
+
+        // Make the cage a bit larger than the fairy
+        int margin = 200;  // adjust this if you want tighter/looser cage
+        int w = currentFairyWidth  + margin;
+        int h = currentFairyHeight + margin;
+
+        // Center on the fairy
+        int centerX = FAIRY_DRAW_X + currentFairyWidth  / 2;
+        int centerY = FAIRY_DRAW_Y + currentFairyHeight / 2;
+
+        int x = centerX - w / 2;
+        int y = centerY - h / 2;
+
+        // Draw cage scaled to this size
+        drawImage(cageScaledPath, x, y, w, h);
+
+        if (cageFrame >= CAGE_MAX_FRAMES) {
+            cageActive = false;
+        }
+    }
+
+    private void drawShieldAbility() {
+        if (!shieldActive) return;
+
+        shieldFrame++;
+
+        int fullW = (shieldScaled != null ? shieldScaled.getWidth() : 100);
+        int fullH = (shieldScaled != null ? shieldScaled.getHeight() : 100);
+
+        // How much bigger than the original sprite you want the shield
+        double baseFactor = 1.8;      // 1.0 = original, 1.5 = 50% bigger, 2.0 = twice as big
+
+        // Pulse the shield: scale up and down around that base size
+        double phase = (shieldFrame % 20) / 20.0 * 2 * Math.PI;  // 0..2π
+        double pulse = 0.9 + 0.2 * (0.5 + 0.5 * Math.sin(phase));  // ~0.9 .. 1.1
+
+        int w = (int)(fullW * baseFactor * pulse);
+        int h = (int)(fullH * baseFactor * pulse);
+
+        // CENTER BETWEEN PLAYER AND FAIRY
+        int midX = (getPlayerCenterX() + getFairyCenterX()) / 2;
+        int midY = (getPlayerCenterY() + getFairyCenterY()) / 2;
+
+        int x = midX - w / 2;
+        int y = midY - h / 2;
+
+        // Draw scaled shield in the middle
+        drawImage(shieldScaledPath, x, y, w, h);
+
+        if (shieldFrame >= SHIELD_MAX_FRAMES) {
+            shieldActive = false;
+        }
+    }
+
+    private void drawBloodsuckerAbility() {
+        if (!bloodsuckerActive) return;
+
+        bloodFrame++;
+        double t = bloodFrame / (double) BLOOD_MAX_FRAMES;  // 0..1
+
+        if (t >= 1.0) {
+            bloodsuckerActive = false;
+            return;
+        }
+
+        int w = (bloodsuckerScaled != null ? bloodsuckerScaled.getWidth() : 60);
+        int h = (bloodsuckerScaled != null ? bloodsuckerScaled.getHeight() : 60);
+
+        int playerX = getPlayerCenterX();
+        int playerY = getPlayerCenterY();
+        int fairyX  = getFairyCenterX();
+        int fairyY  = getFairyCenterY();
+
+        // First half: player -> fairy, second half: fairy -> player
+        double p;
+        int fromX, fromY, toX, toY;
+
+        if (t < 0.5) {
+            // Going from player to fairy
+            p = t / 0.5;          // 0..1
+            fromX = playerX;
+            fromY = playerY;
+            toX   = fairyX;
+            toY   = fairyY;
+        } else {
+            // Coming back from fairy to player
+            p = (t - 0.5) / 0.5;  // 0..1
+            fromX = fairyX;
+            fromY = fairyY;
+            toX   = playerX;
+            toY   = playerY;
+        }
+
+        int centerX = (int)(fromX + p * (toX - fromX));
+        int centerY = (int)(fromY + p * (toY - fromY));
+
+        // Small vertical curve to make the path less straight
+        int curveHeight = 30;
+        centerY += (int)(Math.sin(p * Math.PI) * -curveHeight);
+
+        int drawX = centerX - w / 2;
+        int drawY = centerY - h / 2;
+
+        drawImage(bloodsuckerScaledPath, drawX, drawY);
+    }
+
     private void drawAllAbilities() {
-        drawTreeAbility();
-        drawStoneAbility();
-        drawWallAbility();
-        drawPunchAbility();
+        if (isEarthCharacter()) {
+            drawTreeAbility();
+            drawStoneAbility();
+            drawWallAbility();
+            drawPunchAbility();
+        } else if (isWaterCharacter()) {
+            drawWaveAbility();
+            drawCageAbility();
+            drawShieldAbility();
+            drawBloodsuckerAbility();
+        }
+
         drawPotionAnimation();
     }
 
