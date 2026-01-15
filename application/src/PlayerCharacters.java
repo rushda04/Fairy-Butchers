@@ -4,6 +4,7 @@ public class PlayerCharacters {
     public int atk;
     public int hp;
     public int baseMana;
+    public int currentMana;
 
 
     public PlayerCharacters(){
@@ -16,5 +17,6 @@ public class PlayerCharacters {
         this.atk = atk;
         this.hp = hp;
         this.baseMana = baseMana;
+        this.currentMana = baseMana;
     }
 }
