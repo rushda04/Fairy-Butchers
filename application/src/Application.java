@@ -90,11 +90,23 @@ public class Application implements GameLoop {
     BufferedImage shieldScaled;
     BufferedImage bloodsuckerScaled;
 
+    // === Air monster ability sprites ===
+    BufferedImage airFartScaled;
+    BufferedImage airShieldScaled;
+    BufferedImage airTornadoScaled;
+    BufferedImage airSuperAttackScaled;
+
     // === Ability icon images and paths ===
     BufferedImage iconTree;
     BufferedImage iconStone;
     BufferedImage iconWall;
     BufferedImage iconPunch;
+
+    // === Fire monster ability sprites ===
+    BufferedImage fireFireballScaled;
+    BufferedImage fireWhipScaled;
+    BufferedImage fireHelldoorScaled;
+    BufferedImage fireBurnTheWichScaled;
 
 
 
@@ -115,6 +127,28 @@ public class Application implements GameLoop {
     String iconWaterShieldPath      = "resources/icon_water_shield_scaled.png";
     String iconWaterBloodsuckerPath = "resources/icon_water_bloodsucker_scaled.png";
 
+    // === Fire ability icons ===
+    BufferedImage iconFireFireball;
+    BufferedImage iconFireWhip;
+    BufferedImage iconFireHelldoor;
+    BufferedImage iconFireBurnTheWich;
+
+    String iconFireFireballPath    = "resources/fire_icon_fireball_scaled.png";
+    String iconFireWhipPath        = "resources/fire_icon_whip_scaled.png";
+    String iconFireHelldoorPath    = "resources/fire_icon_helldoor_scaled.png";
+    String iconFireBurnTheWichPath = "resources/fire_icon_burnthewich_scaled.png";
+
+    // === Air ability icons ===
+    BufferedImage iconAirFart;
+    BufferedImage iconAirShield;
+    BufferedImage iconAirTornado;
+    BufferedImage iconAirSuperAttack;
+
+
+    String iconAirFartPath        = "resources/air_icon_fart_scaled.png";
+    String iconAirShieldPath      = "resources/air_icon_shield_scaled.png";
+    String iconAirTornadoPath     = "resources/air_icon_tornado_scaled.png";
+    String iconAirSuperAttackPath = "resources/air_icon_superattack_scaled.png";
 
     String potionFullScaledPath  = "resources/Filled potion.png";
     String potionEmptyScaledPath = "resources/Potions Empty.png";
@@ -132,6 +166,17 @@ public class Application implements GameLoop {
     String cageScaledPath        = "resources/water_ability_cage_scaled.png";
     String shieldScaledPath      = "resources/water_ability_shield_scaled.png";
     String bloodsuckerScaledPath = "resources/water_ability_bloodsucker_scaled.png";
+
+    String airFartScaledPath        = "resources/air_ability_fart_scaled.png";
+    String airShieldScaledPath      = "resources/air_ability_shield_scaled.png";
+    String airTornadoScaledPath     = "resources/air_ability_tornado_scaled.png";
+    String airSuperAttackScaledPath = "resources/air_ability_superattack_scaled.png";
+
+    // === Fire abilities scaled output paths ===
+    String fireFireballScaledPath    = "resources/fire_ability_fireball_scaled.png";
+    String fireWhipScaledPath        = "resources/fire_ability_whip_scaled.png";
+    String fireHelldoorScaledPath    = "resources/fire_ability_helldoor_scaled.png";
+    String fireBurnTheWichScaledPath = "resources/fire_ability_witch_scaled.png";
 
     String playButtonScaledPath = "resources/playButton_scaled.png";
     String playButtonHoverScaledPath = "resources/playButton_hover_scaled.png";
@@ -190,6 +235,40 @@ public class Application implements GameLoop {
 
     int bloodFrame = 0;
     int BLOOD_MAX_FRAMES = 50;
+
+    // === Air abilities state ===
+    boolean airFartActive = false;
+    int airFartFrame = 0;
+    int AIR_FART_MAX_FRAMES = 30;
+
+    boolean airShieldActive = false;
+    int airShieldFrame = 0;
+    int AIR_SHIELD_MAX_FRAMES = 60;
+
+    boolean airTornadoActive = false;
+    int airTornadoFrame = 0;
+    int AIR_TORNADO_MAX_FRAMES = 50;
+
+    boolean airSuperActive = false;
+    int airSuperFrame = 0;
+    int AIR_SUPER_MAX_FRAMES = 60;
+
+    // === Fire abilities state ===
+    boolean fireFireballActive = false;
+    int fireFireballFrame = 0;
+    int FIRE_FIREBALL_MAX_FRAMES = 30;
+
+    boolean fireWhipActive = false;
+    int fireWhipFrame = 0;
+    int FIRE_WHIP_MAX_FRAMES = 24;
+
+    boolean fireHelldoorActive = false;
+    int fireHelldoorFrame = 0;
+    int FIRE_HELLDOOR_MAX_FRAMES = 45;
+
+    boolean fireBurnTheWichActive = false;
+    int fireBurnTheWichFrame = 0;
+    int FIRE_BURNTHEWICH_MAX_FRAMES = 50;
 
     // ===== POTIONS =====
     int maxPotions = 3;     // total potions for the game
@@ -340,14 +419,23 @@ public class Application implements GameLoop {
         if (e.getKeyCode() == KeyboardEvent.VK_Q) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_Q, this::startWaveAbility, 1);
+            } else if (isFireCharacter()) {
+                // Q: Fireball → 1 attack
+                handlePlayerAbility(KeyboardEvent.VK_Q, this::startFireFireballAbility, 1);
+            } else if (isAirCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_Q, this::startAirFartAbility, 1);
             } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_Q, this::startTreeAbility, 1);
             }
-            // characters 1 and 2 do nothing (for now)
 
         } else if (e.getKeyCode() == KeyboardEvent.VK_W) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_W, this::startCageAbility, 1);
+            } else if (isFireCharacter()) {
+                // W: Whip → 1 attack
+                handlePlayerAbility(KeyboardEvent.VK_W, this::startFireWhipAbility, 1);
+            } else if (isAirCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_W, this::startAirShieldAbility, 0);
             } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_W, this::startStoneAbility, 1);
             }
@@ -355,6 +443,11 @@ public class Application implements GameLoop {
         } else if (e.getKeyCode() == KeyboardEvent.VK_E) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_E, this::startShieldAbility, 0);
+            } else if (isFireCharacter()) {
+                // E: Helldoor → 0 attacks (pure effect)
+                handlePlayerAbility(KeyboardEvent.VK_E, this::startFireHelldoorAbility, 0);
+            } else if (isAirCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_E, this::startAirTornadoAbility, 1);
             } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_E, this::startWallAbility, 0);
             }
@@ -362,10 +455,16 @@ public class Application implements GameLoop {
         } else if (e.getKeyCode() == KeyboardEvent.VK_R) {
             if (isWaterCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_R, this::startBloodsuckerAbility, 2);
+            } else if (isFireCharacter()) {
+                // R: Burn the wich → 2 attacks (big damage)
+                handlePlayerAbility(KeyboardEvent.VK_R, this::startFireBurnTheWichAbility, 2);
+            } else if (isAirCharacter()) {
+                handlePlayerAbility(KeyboardEvent.VK_R, this::startAirSuperAbility, 2);
             } else if (isEarthCharacter()) {
                 handlePlayerAbility(KeyboardEvent.VK_R, this::startPunchAbility, 2);
             }
         }
+
     }
 
     @Override
@@ -509,24 +608,8 @@ public class Application implements GameLoop {
             String iconPath = null;
             BufferedImage iconImage = null;
 
-            if (isEarthCharacter()) {
-                // Earth monster icons
-                if (i == 0) {              // Q - Tree
-                    iconPath = iconTreePath;
-                    iconImage = iconTree;
-                } else if (i == 1) {       // W - Stone
-                    iconPath = iconStonePath;
-                    iconImage = iconStone;
-                } else if (i == 2) {       // E - Wall
-                    iconPath = iconWallPath;
-                    iconImage = iconWall;
-                } else if (i == 3) {       // R - Punch
-                    iconPath = iconPunchPath;
-                    iconImage = iconPunch;
-                }
-
-            } else if (isWaterCharacter()) {
-                // Water monster icons
+            if (isWaterCharacter()) {
+                // Water monster icons (Q,W,E,R)
                 if (i == 0) {              // Q - Wave
                     iconPath = iconWaterWavePath;
                     iconImage = iconWaterWave;
@@ -540,7 +623,56 @@ public class Application implements GameLoop {
                     iconPath = iconWaterBloodsuckerPath;
                     iconImage = iconWaterBloodsucker;
                 }
+
+            } else if (isFireCharacter()) {
+                // Fire monster icons (Q,W,E,R)
+                if (i == 0) {              // Q - Fireball
+                    iconPath = iconFireFireballPath;
+                    iconImage = iconFireFireball;
+                } else if (i == 1) {       // W - Whip
+                    iconPath = iconFireWhipPath;
+                    iconImage = iconFireWhip;
+                } else if (i == 2) {       // E - Helldoor
+                    iconPath = iconFireHelldoorPath;
+                    iconImage = iconFireHelldoor;
+                } else if (i == 3) {       // R - Burn the wich
+                    iconPath = iconFireBurnTheWichPath;
+                    iconImage = iconFireBurnTheWich;
+                }
+
+            } else if (isAirCharacter()) {
+                // Air monster icons (Q,W,E,R)
+                if (i == 0) {              // Q - Fart (or gust)
+                    iconPath = iconAirFartPath;
+                    iconImage = iconAirFart;
+                } else if (i == 1) {       // W - Shield
+                    iconPath = iconAirShieldPath;
+                    iconImage = iconAirShield;
+                } else if (i == 2) {       // E - Tornado
+                    iconPath = iconAirTornadoPath;
+                    iconImage = iconAirTornado;
+                } else if (i == 3) {       // R - Super attack
+                    iconPath = iconAirSuperAttackPath;
+                    iconImage = iconAirSuperAttack;
+                }
+
+            } else if (isEarthCharacter()) {
+                // Earth monster icons (Q,W,E,R)
+                if (i == 0) {              // Q - Tree
+                    iconPath = iconTreePath;
+                    iconImage = iconTree;
+                } else if (i == 1) {       // W - Stone
+                    iconPath = iconStonePath;
+                    iconImage = iconStone;
+                } else if (i == 2) {       // E - Wall
+                    iconPath = iconWallPath;
+                    iconImage = iconWall;
+                } else if (i == 3) {       // R - Punch
+                    iconPath = iconPunchPath;
+                    iconImage = iconPunch;
+                }
             }
+
             // Scale the icon to fit nicely in the box
             if (iconPath != null && iconImage != null) {
                 int originalW = iconImage.getWidth();
@@ -660,6 +792,17 @@ public class Application implements GameLoop {
             shieldScaled      = loadSprite("resources/water_ability_shield.png",      shieldScaledPath,      5);
             bloodsuckerScaled = loadSprite("resources/water_ability_bloodsucker.png", bloodsuckerScaledPath, 5);
 
+            // === Air monster abilities ===
+            airFartScaled        = loadSprite("resources/air_ability_fart.png",        airFartScaledPath,        10);
+            airShieldScaled      = loadSprite("resources/air_ability_shield.png",      airShieldScaledPath,      10);
+            airTornadoScaled     = loadSprite("resources/air_ability_tornado.png",     airTornadoScaledPath,     10);
+            airSuperAttackScaled = loadSprite("resources/air_ability_superattack.png", airSuperAttackScaledPath, 10);
+
+            // === Fire monster abilities ===
+            fireFireballScaled    = loadSprite("resources/fire_ability_fireball.png", fireFireballScaledPath,    5);
+            fireWhipScaled        = loadSprite("resources/fire_ability_whip.png",     fireWhipScaledPath,        5);
+            fireHelldoorScaled    = loadSprite("resources/fire_ability_helldoor.png", fireHelldoorScaledPath,    10);
+            fireBurnTheWichScaled = loadSprite("resources/fire_ability_witch.png",    fireBurnTheWichScaledPath, 10);
 
             // === Load separate ability icons for HUD ===
             iconTree  = loadSprite("resources/icon_tree.png",  iconTreePath, 1);
@@ -672,6 +815,18 @@ public class Application implements GameLoop {
             iconWaterCage        = loadSprite("resources/icon_water_cage.png",        iconWaterCagePath,        1);
             iconWaterShield      = loadSprite("resources/icon_water_shield.png",      iconWaterShieldPath,      1);
             iconWaterBloodsucker = loadSprite("resources/icon_water_bloodsucker.png", iconWaterBloodsuckerPath, 1);
+
+            // === Load fire ability icons ===
+            iconFireFireball    = loadSprite("resources/fire_icon_fireball.png",    iconFireFireballPath,    1);
+            iconFireWhip        = loadSprite("resources/fire_icon_whip.png",        iconFireWhipPath,        1);
+            iconFireHelldoor    = loadSprite("resources/fire_icon_helldoor.png",    iconFireHelldoorPath,    1);
+            iconFireBurnTheWich = loadSprite("resources/fire_icon_burnthewich.png", iconFireBurnTheWichPath, 1);
+
+            // === Load air ability icons ===
+            iconAirFart        = loadSprite("resources/air_icon_fart.png",        iconAirFartPath,        1);
+            iconAirShield      = loadSprite("resources/air_icon_shield.png",      iconAirShieldPath,      1);
+            iconAirTornado     = loadSprite("resources/air_icon_tornado.png",     iconAirTornadoPath,     1);
+            iconAirSuperAttack = loadSprite("resources/air_icon_superattack.png", iconAirSuperAttackPath, 1);
 
             treeSpinPaths = new String[TREE_SPIN_FRAME_COUNT];
             for (int i = 0; i < TREE_SPIN_FRAME_COUNT; i++) {
@@ -832,13 +987,21 @@ public class Application implements GameLoop {
         return FAIRY_DRAW_Y + currentFairyHeight / 2;
     }
 
-    // Earth = character 4 (index 3), Water = character 3 (index 2)
-    private boolean isEarthCharacter() {
-        return selectedCharacterIndex == 3;   // key '4'
+    // Mapping: 1 = Water, 2 = Fire, 3 = Air, 4 = Earth
+    private boolean isWaterCharacter() {
+        return selectedCharacterIndex == 0;   // key '1'
     }
 
-    private boolean isWaterCharacter() {
+    private boolean isFireCharacter() {
+        return selectedCharacterIndex == 1;   // key '2'
+    }
+
+    private boolean isAirCharacter() {
         return selectedCharacterIndex == 2;   // key '3'
+    }
+
+    private boolean isEarthCharacter() {
+        return selectedCharacterIndex == 3;   // key '4'
     }
 
     private void startTurnTimer() {
@@ -943,6 +1106,57 @@ public class Application implements GameLoop {
     private void startBloodsuckerAbility() {
         bloodsuckerActive = true;
         bloodFrame = 0;     // reset animation
+    }
+
+    // === AIR MONSTER ABILITIES ===
+
+    // Q - Fart: fast arc projectile from player to fairy
+    private void startAirFartAbility() {
+        airFartActive = true;
+        airFartFrame = 0;
+    }
+
+    // W - Shield: orbiting shield around player
+    private void startAirShieldAbility() {
+        airShieldActive = true;
+        airShieldFrame = 0;
+    }
+
+    // E - Tornado: tornado under the fairy
+    private void startAirTornadoAbility() {
+        airTornadoActive = true;
+        airTornadoFrame = 0;
+    }
+
+    // R - Super attack: black hole at fairy center grows then shrinks
+    private void startAirSuperAbility() {
+        airSuperActive = true;
+        airSuperFrame = 0;
+    }
+
+    // === FIRE MONSTER ABILITIES ===
+// Q - Fireball: projectile from player to fairy
+    private void startFireFireballAbility() {
+        fireFireballActive = true;
+        fireFireballFrame = 0;
+    }
+
+    // W - Whip: horizontal lash from player towards fairy
+    private void startFireWhipAbility() {
+        fireWhipActive = true;
+        fireWhipFrame = 0;
+    }
+
+    // E - Helldoor: portal behind fairy that grows then shrinks
+    private void startFireHelldoorAbility() {
+        fireHelldoorActive = true;
+        fireHelldoorFrame = 0;
+    }
+
+    // R - Burn the wich: big vertical flames on the fairy
+    private void startFireBurnTheWichAbility() {
+        fireBurnTheWichActive = true;
+        fireBurnTheWichFrame = 0;
     }
 
     private void drawTreeAbility() {
@@ -1080,6 +1294,35 @@ public class Application implements GameLoop {
         }
     }
 
+    private void drawFireWhipAbility() {
+        if (!fireWhipActive) return;
+
+        fireWhipFrame++;
+        double t = fireWhipFrame / (double) FIRE_WHIP_MAX_FRAMES;
+
+        if (t >= 1.0) {
+            fireWhipActive = false;
+            fireWhipFrame = 0;
+            return;
+        }
+
+        int w = (fireWhipScaled != null ? fireWhipScaled.getWidth()  : 120);
+        int h = (fireWhipScaled != null ? fireWhipScaled.getHeight() : 60);
+
+        int baseX = getPlayerCenterX();
+        int baseY = getPlayerCenterY() - h / 4;  // around the hand
+
+        // Extend then retract
+        double reach = 300;   // max distance
+        double factor = (t < 0.5) ? (t / 0.5) : (1.0 - (t - 0.5) / 0.5); // 0→1→0
+        int offsetX = (int)(reach * factor);
+
+        int x = baseX + offsetX - w / 2;
+        int y = baseY - h / 2;
+
+        drawImage(fireWhipScaledPath, x, y);
+    }
+
     private void drawWaveAbility() {
         if (!waveActive) return;
 
@@ -1169,6 +1412,69 @@ public class Application implements GameLoop {
         }
     }
 
+    private void drawFireHelldoorAbility() {
+        if (!fireHelldoorActive || currentFairy == null) return;
+
+        fireHelldoorFrame++;
+        double t = fireHelldoorFrame / (double) FIRE_HELLDOOR_MAX_FRAMES;
+
+        if (t >= 1.0) {
+            fireHelldoorActive = false;
+            fireHelldoorFrame = 0;
+            return;
+        }
+
+        int fullW = (fireHelldoorScaled != null ? fireHelldoorScaled.getWidth()  : 120);
+        int fullH = (fireHelldoorScaled != null ? fireHelldoorScaled.getHeight() : 180);
+
+        // Grow then shrink (0.3 → 1.1 → 0.3)
+        double scale = 0.3 + 0.8 * Math.sin(t * Math.PI);
+        int w = (int)(fullW * scale);
+        int h = (int)(fullH * scale);
+
+        int centerX = getFairyCenterX();
+        int fairyFeetY = FAIRY_DRAW_Y + currentFairyHeight;
+
+        int x = centerX - w / 2;
+        int y = fairyFeetY - h;  // stand on ground
+
+        drawImage(fireHelldoorScaledPath, x, y, w, h);
+    }
+
+    private void drawFireBurnTheWichAbility() {
+        if (!fireBurnTheWichActive || currentFairy == null) return;
+
+        fireBurnTheWichFrame++;
+        double t = fireBurnTheWichFrame / (double) FIRE_BURNTHEWICH_MAX_FRAMES;
+
+        if (t >= 1.0) {
+            fireBurnTheWichActive = false;
+            fireBurnTheWichFrame = 0;
+            return;
+        }
+
+        int fullW = (fireBurnTheWichScaled != null ? fireBurnTheWichScaled.getWidth()  : 140);
+        int fullH = (fireBurnTheWichScaled != null ? fireBurnTheWichScaled.getHeight() : 200);
+
+        // Flicker: scale oscillates a bit
+        double flicker = 0.85 + 0.15 * Math.sin(t * 6 * Math.PI);  // fast flicker
+        double baseScale = 0.7 + 0.3 * Math.sin(t * Math.PI);      // grow then shrink
+        double scale = baseScale * flicker;
+
+        int w = (int)(fullW * scale);
+        int h = (int)(fullH * scale);
+
+        int centerX = getFairyCenterX();
+        int fairyFeetY = FAIRY_DRAW_Y + currentFairyHeight;
+
+        int baseY = fairyFeetY - h;
+        int rise  = (int)(t * 40);  // flames rise a bit
+        int x = centerX - w / 2;
+        int y = baseY - rise;
+
+        drawImage(fireBurnTheWichScaledPath, x, y, w, h);
+    }
+
     private void drawBloodsuckerAbility() {
         if (!bloodsuckerActive) return;
 
@@ -1221,17 +1527,172 @@ public class Application implements GameLoop {
         drawImage(bloodsuckerScaledPath, drawX, drawY);
     }
 
+    private void drawAirFartAbility() {
+        if (!airFartActive) return;
+
+        airFartFrame++;
+        double t = airFartFrame / (double) AIR_FART_MAX_FRAMES;   // 0..1
+
+        if (t >= 1.0) {
+            airFartActive = false;
+            return;
+        }
+
+        int w = (airFartScaled != null ? airFartScaled.getWidth()  : 40);
+        int h = (airFartScaled != null ? airFartScaled.getHeight() : 40);
+
+        int startX = getPlayerCenterX() - w / 2;
+        int endX   = getFairyCenterX() - w / 2;
+
+        // Base Y: middle of player
+        int baseY = getPlayerCenterY() - h / 2;
+
+        // Small arc (up then down)
+        int arcHeight = 40;
+        int offsetY   = (int) (Math.sin(t * Math.PI) * -arcHeight);
+
+        int x = (int) (startX + t * (endX - startX));
+        int y = baseY + offsetY;
+
+        drawImage(airFartScaledPath, x, y);
+    }
+
+    private void drawFireFireballAbility() {
+        if (!fireFireballActive) return;
+
+        fireFireballFrame++;
+        double t = fireFireballFrame / (double) FIRE_FIREBALL_MAX_FRAMES;  // 0..1
+
+        if (t >= 1.0) {
+            fireFireballActive = false;
+            fireFireballFrame = 0;
+            return;
+        }
+
+        int w = (fireFireballScaled != null ? fireFireballScaled.getWidth()  : 50);
+        int h = (fireFireballScaled != null ? fireFireballScaled.getHeight() : 50);
+
+        int startX = getPlayerCenterX() - w / 2;
+        int endX   = getFairyCenterX()  - w / 2;
+
+        int baseY = getPlayerCenterY() - h / 2;
+
+        int arcHeight = 60;
+        int offsetY = (int)(Math.sin(t * Math.PI) * -arcHeight);
+
+        int x = (int)(startX + t * (endX - startX));
+        int y = baseY + offsetY;
+
+        drawImage(fireFireballScaledPath, x, y);
+    }
+
+    private void drawAirShieldAbility() {
+        if (!airShieldActive) return;
+
+        airShieldFrame++;
+
+        int w = (airShieldScaled != null ? airShieldScaled.getWidth()  : 60);
+        int h = (airShieldScaled != null ? airShieldScaled.getHeight() : 60);
+
+        int centerX = getPlayerCenterX();
+        int centerY = getPlayerCenterY();
+
+        double angle   = airShieldFrame * 0.2;  // radians; tweak for speed
+        int radius     = 80;                    // distance from player center
+        int orbitX     = centerX + (int)(radius * Math.cos(angle));
+        int orbitY     = centerY + (int)(radius * Math.sin(angle));
+
+        int x = orbitX - w / 2;
+        int y = orbitY - h / 2;
+
+        drawImage(airShieldScaledPath, x, y);
+
+        if (airShieldFrame >= AIR_SHIELD_MAX_FRAMES) {
+            airShieldActive = false;
+            airShieldFrame = 0;
+        }
+    }
+
+    private void drawAirTornadoAbility() {
+        if (!airTornadoActive) return;
+
+        airTornadoFrame++;
+        double t = airTornadoFrame / (double) AIR_TORNADO_MAX_FRAMES;
+
+        if (t >= 1.0) {
+            airTornadoActive = false;
+            airTornadoFrame = 0;
+            return;
+        }
+
+        int w = (airTornadoScaled != null ? airTornadoScaled.getWidth()  : 80);
+        int h = (airTornadoScaled != null ? airTornadoScaled.getHeight() : 120);
+
+        int centerX = getFairyCenterX();
+        int fairyFeetY = FAIRY_DRAW_Y + currentFairyHeight;
+
+        int baseY = fairyFeetY - h;   // tornado stands on fairy's ground
+
+        // Rise up slightly over time
+        int rise = (int)(t * 30);     // move up to 30 pixels
+
+        int x = centerX - w / 2;
+        int y = baseY - rise;
+
+        drawImage(airTornadoScaledPath, x, y);
+    }
+
+    private void drawAirSuperAbility() {
+        if (!airSuperActive) return;
+
+        airSuperFrame++;
+        double t = airSuperFrame / (double) AIR_SUPER_MAX_FRAMES;
+
+        if (t >= 1.0) {
+            airSuperActive = false;
+            airSuperFrame = 0;
+            return;
+        }
+
+        int fullW = (airSuperAttackScaled != null ? airSuperAttackScaled.getWidth()  : 80);
+        int fullH = (airSuperAttackScaled != null ? airSuperAttackScaled.getHeight() : 80);
+
+        // Grow then shrink (pulse)
+        double scale = 1.0 + 0.5 * Math.sin(t * Math.PI); // 1.0 → 1.5 → 1.0
+
+        int w = (int)(fullW * scale);
+        int h = (int)(fullH * scale);
+
+        int centerX = getFairyCenterX();
+        int centerY = getFairyCenterY();
+
+        int x = centerX - w / 2;
+        int y = centerY - h / 2;
+
+        drawImage(airSuperAttackScaledPath, x, y, w, h);
+    }
+
     private void drawAllAbilities() {
-        if (isEarthCharacter()) {
-            drawTreeAbility();
-            drawStoneAbility();
-            drawWallAbility();
-            drawPunchAbility();
-        } else if (isWaterCharacter()) {
+        if (isWaterCharacter()) {
             drawWaveAbility();
             drawCageAbility();
             drawShieldAbility();
             drawBloodsuckerAbility();
+        } else if (isFireCharacter()) {
+            drawFireFireballAbility();
+            drawFireWhipAbility();
+            drawFireHelldoorAbility();
+            drawFireBurnTheWichAbility();
+        } else if (isAirCharacter()) {
+            drawAirFartAbility();
+            drawAirShieldAbility();
+            drawAirTornadoAbility();
+            drawAirSuperAbility();
+        } else if (isEarthCharacter()) {
+            drawTreeAbility();
+            drawStoneAbility();
+            drawWallAbility();
+            drawPunchAbility();
         }
 
         drawPotionAnimation();
